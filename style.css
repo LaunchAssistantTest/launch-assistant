@@ -1,6 +1,7 @@
 /* Custom Styles */
 .highlight {
-  background-color: lightgreen;
+    background-color: orange;
+    color: black;
 }
 
 pre {
