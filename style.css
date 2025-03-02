@@ -1,0 +1,26 @@
+/* Custom Styles */
+.highlight {
+  background-color: lightgreen;
+}
+
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* Custom class for rule component containers and settings code blocks */
+.component-bg {
+  background-color: #404040;
+  color: palegreen;
+}
+
+/* Additional styling for accordion items */
+.accordion-item {
+  margin-bottom: 1rem;
+}
+.accordion-header {
+  cursor: pointer;
+}
+.accordion-content {
+  padding-top: 0.5rem;
+}
