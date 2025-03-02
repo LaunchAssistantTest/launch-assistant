@@ -432,6 +432,41 @@ function showLoading(show = true) {
   const indicator = document.getElementById('loadingIndicator');
   indicator.classList.toggle('hidden', !show);
 }
+document.getElementById('searchBtn').addEventListener('click', function() {
+  const query = document.getElementById('searchQuery').value.trim().toLowerCase();
+  const accordionItems = document.querySelectorAll('#searchResults .accordion-item');
+  
+  accordionItems.forEach(item => {
+    let found = false;
+    const preElements = item.querySelectorAll('pre');
+    
+    preElements.forEach(pre => {
+      // Retrieve original text from a custom attribute; if not set, save it.
+      let originalText = pre.getAttribute('data-original');
+      if (!originalText) {
+        originalText = pre.textContent;
+        pre.setAttribute('data-original', originalText);
+      }
+      
+      if (originalText.toLowerCase().includes(query)) {
+        found = true;
+        pre.innerHTML = highlightText(originalText, query);
+      } else {
+        pre.innerHTML = originalText;
+      }
+    });
+    
+    if (found) {
+      item.style.display = "block";
+      const content = item.querySelector('.accordion-content');
+      if (content) content.style.display = "block";
+      const toggle = item.querySelector('.toggle-icon');
+      if (toggle) toggle.innerHTML = '<i class="fa fa-minus"></i>';
+    } else {
+      item.style.display = "none";
+    }
+  });
+});
 
 // Get Details Button Logic
 document.getElementById('getDetailsBtn').addEventListener('click', async () => {
