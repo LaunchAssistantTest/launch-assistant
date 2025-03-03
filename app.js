@@ -6,7 +6,35 @@ let config = {
   clientSecret: ""
 };
 
-// Utility Functions
+/**
+ * Helper function to render an attributes object as an HTML table.
+ * @param {object} attributes 
+ * @returns {HTMLElement} table element
+ */
+function renderAttributesTable(attributes) {
+  const table = document.createElement('table');
+  table.className = "w-full text-sm border-collapse mb-2";
+  for (let key in attributes) {
+    if (attributes.hasOwnProperty(key)) {
+      const tr = document.createElement('tr');
+      const tdKey = document.createElement('td');
+      tdKey.className = "border px-2 py-1 font-medium";
+      tdKey.innerText = key;
+      const tdValue = document.createElement('td');
+      tdValue.className = "border px-2 py-1";
+      let value = attributes[key];
+      if (typeof value === 'object') {
+        value = JSON.stringify(value, null, 2);
+      }
+      tdValue.innerText = value;
+      tr.appendChild(tdKey);
+      tr.appendChild(tdValue);
+      table.appendChild(tr);
+    }
+  }
+  return table;
+}
+
 function updateGlobalConfig() {
   config.accessToken = document.getElementById('accessToken').value.trim();
   config.orgId = document.getElementById('orgId').value.trim();
@@ -42,7 +70,6 @@ function highlightText(text, keyword) {
   return text.replace(regex, `<span class="highlight">$1</span>`);
 }
 
-// Helper to toggle accordion sections with ARIA support
 function toggleAccordion(header, content, icon) {
   const isExpanded = header.getAttribute('aria-expanded') === "true";
   header.setAttribute('aria-expanded', !isExpanded);
@@ -185,6 +212,7 @@ document.getElementById('toggleAll').addEventListener('click', function() {
 });
 
 // Render functions for dynamic data
+
 function renderDetailsResults(rules, searchKeyword) {
   const resultsDiv = document.getElementById('searchResults');
   let serial = 1;
@@ -216,14 +244,22 @@ function renderDetailsResults(rules, searchKeyword) {
     content.className = "accordion-content mt-2";
     content.style.display = "none";
     
-    let ruleClone = filterResultObject(rule);
-    const rulePre = document.createElement('pre');
-    rulePre.className = "text-sm break-words";
-    rulePre.innerHTML = highlightText(JSON.stringify(ruleClone, null, 2), searchKeyword);
-    content.appendChild(rulePre);
+    // Render attributes as table if available
+    if (rule.attributes) {
+      const table = renderAttributesTable(rule.attributes);
+      content.appendChild(table);
+    } else {
+      let ruleClone = filterResultObject(rule);
+      const rulePre = document.createElement('pre');
+      rulePre.className = "text-sm break-words";
+      rulePre.innerHTML = highlightText(JSON.stringify(ruleClone, null, 2), searchKeyword);
+      content.appendChild(rulePre);
+    }
     
+    // Render settings code block if present
     if (rule.attributes.settings) {
       const settingsHeader = document.createElement('h3');
+      // Keep the bg for rules overall if needed
       settingsHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
       settingsHeader.innerText = "Settings:";
       content.appendChild(settingsHeader);
@@ -233,6 +269,7 @@ function renderDetailsResults(rules, searchKeyword) {
       content.appendChild(codeBlock);
     }
     
+    // Render Rule Components
     if (rule.components && rule.components.length > 0) {
       const compHeader = document.createElement('h3');
       compHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
@@ -241,24 +278,35 @@ function renderDetailsResults(rules, searchKeyword) {
       rule.components.forEach(comp => {
         const compItem = document.createElement('div');
         compItem.className = "mb-2 p-2 pl-4 border rounded component-bg";
-        let compClone = filterResultObject(comp);
+        
+        // Render component attributes as table if available
+        if (comp.attributes) {
+          const compTable = renderAttributesTable(comp.attributes);
+          compItem.appendChild(compTable);
+        } else {
+          let compClone = filterResultObject(comp);
+          const compPre = document.createElement('pre');
+          compPre.className = "text-sm break-words";
+          compPre.innerHTML = highlightText(JSON.stringify(compClone, null, 2), searchKeyword);
+          compItem.appendChild(compPre);
+        }
+        
         if (comp.attributes && comp.attributes.name) {
           const compTitle = document.createElement('h4');
           compTitle.className = "text-base font-medium mb-1";
           compTitle.innerText = comp.attributes.name;
-          compItem.appendChild(compTitle);
+          compItem.insertBefore(compTitle, compItem.firstChild);
         }
-        const compPre = document.createElement('pre');
-        compPre.className = "text-sm break-words";
-        compPre.innerHTML = highlightText(JSON.stringify(compClone, null, 2), searchKeyword);
-        compItem.appendChild(compPre);
+        
+        // Render settings for component if exists.
         if (comp.attributes && comp.attributes.settings) {
           let settingsTitle = "Settings";
           if (comp.attributes.delegate_descriptor_id) {
             settingsTitle += " [" + comp.attributes.delegate_descriptor_id + "]";
           }
           const compSetHeader = document.createElement('h3');
-          compSetHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-2 mb-2";
+          // Remove the background from the settings header (no bg-blue-100 here)
+          compSetHeader.className = "text-lg font-bold p-2 rounded mt-2 mb-2";
           compSetHeader.innerText = settingsTitle;
           compItem.appendChild(compSetHeader);
           const compCodeBlock = document.createElement('pre');
@@ -270,7 +318,6 @@ function renderDetailsResults(rules, searchKeyword) {
       });
     }
     
-    // Toggle accordion content on header click
     header.addEventListener('click', () => {
       if (content.style.display === "block") {
         content.style.display = "none";
@@ -322,11 +369,17 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
       content.className = "accordion-content mt-2";
       content.style.display = "none";
       
-      let deClone = filterResultObject(de);
-      const dePre = document.createElement('pre');
-      dePre.className = "text-sm break-words";
-      dePre.innerHTML = highlightText(JSON.stringify(deClone, null, 2), searchKeyword);
-      content.appendChild(dePre);
+      // Render attributes as table if available
+      if (de.attributes) {
+        const table = renderAttributesTable(de.attributes);
+        content.appendChild(table);
+      } else {
+        let deClone = filterResultObject(de);
+        const dePre = document.createElement('pre');
+        dePre.className = "text-sm break-words";
+        dePre.innerHTML = highlightText(JSON.stringify(deClone, null, 2), searchKeyword);
+        content.appendChild(dePre);
+      }
       
       if (de.attributes.settings) {
         const deSetHeader = document.createElement('h3');
@@ -387,11 +440,17 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
       content.className = "accordion-content mt-2";
       content.style.display = "none";
       
-      let extClone = filterResultObject(ext);
-      const extPre = document.createElement('pre');
-      extPre.className = "text-sm break-words";
-      extPre.innerHTML = highlightText(JSON.stringify(extClone, null, 2), searchKeyword);
-      content.appendChild(extPre);
+      // Render attributes as table if available
+      if (ext.attributes) {
+        const table = renderAttributesTable(ext.attributes);
+        content.appendChild(table);
+      } else {
+        let extClone = filterResultObject(ext);
+        const extPre = document.createElement('pre');
+        extPre.className = "text-sm break-words";
+        extPre.innerHTML = highlightText(JSON.stringify(extClone, null, 2), searchKeyword);
+        content.appendChild(extPre);
+      }
       
       if (ext.attributes.settings) {
         let settingsTitle = "Settings";
@@ -432,41 +491,6 @@ function showLoading(show = true) {
   const indicator = document.getElementById('loadingIndicator');
   indicator.classList.toggle('hidden', !show);
 }
-document.getElementById('searchBtn').addEventListener('click', function() {
-  const query = document.getElementById('searchQuery').value.trim().toLowerCase();
-  const accordionItems = document.querySelectorAll('#searchResults .accordion-item');
-  
-  accordionItems.forEach(item => {
-    let found = false;
-    const preElements = item.querySelectorAll('pre');
-    
-    preElements.forEach(pre => {
-      // Retrieve original text from a custom attribute; if not set, save it.
-      let originalText = pre.getAttribute('data-original');
-      if (!originalText) {
-        originalText = pre.textContent;
-        pre.setAttribute('data-original', originalText);
-      }
-      
-      if (originalText.toLowerCase().includes(query)) {
-        found = true;
-        pre.innerHTML = highlightText(originalText, query);
-      } else {
-        pre.innerHTML = originalText;
-      }
-    });
-    
-    if (found) {
-      item.style.display = "block";
-      const content = item.querySelector('.accordion-content');
-      if (content) content.style.display = "block";
-      const toggle = item.querySelector('.toggle-icon');
-      if (toggle) toggle.innerHTML = '<i class="fa fa-minus"></i>';
-    } else {
-      item.style.display = "none";
-    }
-  });
-});
 
 // Get Details Button Logic
 document.getElementById('getDetailsBtn').addEventListener('click', async () => {
@@ -511,7 +535,6 @@ document.getElementById('getDetailsBtn').addEventListener('click', async () => {
 });
 
 // API fetching functions for rules, data elements, components, and extensions
-
 async function fetchAllRules(propertyId) {
   let rules = [];
   let pageNumber = 1;
