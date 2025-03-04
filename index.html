@@ -84,15 +84,20 @@
       </div>
       
       <!-- Tab Contents -->
+      <!-- Search (Rules) Tab Content -->
       <div id="search" class="tab p-4 bg-white rounded shadow" style="display: block;">
         <h3 class="text-xl font-medium mb-4">Search (Rules)</h3>
         <div class="mb-4">
           <input type="text" id="searchQuery" placeholder="Enter search term" class="w-full p-2 border rounded">
         </div>
-        <div class="mb-4">
+        <div class="mb-4 flex items-center gap-4">
           <label class="inline-flex items-center">
             <input type="checkbox" id="searchRevisions" class="form-checkbox">
             <span class="ml-2">Search for revisions</span>
+          </label>
+          <label class="inline-flex items-center">
+            <input type="checkbox" id="showAttributes" class="form-checkbox">
+            <span class="ml-2">Show attributes</span>
           </label>
         </div>
         <div class="flex items-center justify-between mb-4">
