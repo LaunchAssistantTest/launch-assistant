@@ -1,7 +1,6 @@
 /* Custom Styles */
 .highlight {
-    background-color: orange;
-    color: black;
+  background-color: lightgreen;
 }
 
 pre {
@@ -15,13 +14,20 @@ pre {
   color: palegreen;
 }
 
-/* Additional styling for accordion items */
-.accordion-item {
-  margin-bottom: 1rem;
-}
-.accordion-header {
-  cursor: pointer;
-}
+/* Accordion content padding updated */
 .accordion-content {
-  padding-top: 0.5rem;
+  padding: 1.2rem;
+}
+
+/* Table styling for attributes without borders */
+table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+  margin-bottom: 0.5rem;
+}
+
+table td {
+  padding: 0.25rem 0.5rem;
+  /* Remove border styling */
 }
