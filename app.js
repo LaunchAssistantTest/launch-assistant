@@ -244,21 +244,17 @@ function renderDetailsResults(rules, searchKeyword) {
     header.appendChild(headerRight);
     
     const content = document.createElement('div');
-    content.className = "accordion-content"; // padding now set to 1.2rem via CSS
+    content.className = "accordion-content"; // padding set via CSS to 1.2rem
     content.style.display = "none";
     
-    // If "Show attributes" is enabled, render the attributes table.
-    // Otherwise, remove the attributes from the raw JSON output.
     if (showAttributesEnabled() && rule.attributes) {
       const table = renderAttributesTable(rule.attributes);
       content.appendChild(table);
     } else {
-      let ruleClone = filterResultObject(rule);
-      delete ruleClone.attributes;
-      const rulePre = document.createElement('pre');
-      rulePre.className = "text-sm break-words";
-      rulePre.innerHTML = highlightText(JSON.stringify(ruleClone, null, 2), searchKeyword);
-      content.appendChild(rulePre);
+      // Remove the attributes entirely from the rendered content.
+      const message = document.createElement('p');
+      message.innerText = "Attributes hidden";
+      content.appendChild(message);
     }
     
     // Render settings code block if present
@@ -287,12 +283,9 @@ function renderDetailsResults(rules, searchKeyword) {
           const compTable = renderAttributesTable(comp.attributes);
           compItem.appendChild(compTable);
         } else {
-          let compClone = filterResultObject(comp);
-          delete compClone.attributes;
-          const compPre = document.createElement('pre');
-          compPre.className = "text-sm break-words";
-          compPre.innerHTML = highlightText(JSON.stringify(compClone, null, 2), searchKeyword);
-          compItem.appendChild(compPre);
+          const message = document.createElement('p');
+          message.innerText = "Attributes hidden";
+          compItem.appendChild(message);
         }
         
         if (comp.attributes && comp.attributes.name) {
@@ -377,12 +370,9 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
         const table = renderAttributesTable(de.attributes);
         content.appendChild(table);
       } else {
-        let deClone = filterResultObject(de);
-        delete deClone.attributes;
-        const dePre = document.createElement('pre');
-        dePre.className = "text-sm break-words";
-        dePre.innerHTML = highlightText(JSON.stringify(deClone, null, 2), searchKeyword);
-        content.appendChild(dePre);
+        const message = document.createElement('p');
+        message.innerText = "Attributes hidden";
+        content.appendChild(message);
       }
       
       if (de.attributes.settings) {
@@ -448,12 +438,9 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
         const table = renderAttributesTable(ext.attributes);
         content.appendChild(table);
       } else {
-        let extClone = filterResultObject(ext);
-        delete extClone.attributes;
-        const extPre = document.createElement('pre');
-        extPre.className = "text-sm break-words";
-        extPre.innerHTML = highlightText(JSON.stringify(extClone, null, 2), searchKeyword);
-        content.appendChild(extPre);
+        const message = document.createElement('p');
+        message.innerText = "Attributes hidden";
+        content.appendChild(message);
       }
       
       if (ext.attributes.settings) {
