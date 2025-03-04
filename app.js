@@ -13,7 +13,6 @@ let config = {
  */
 function renderAttributesTable(attributes) {
   const table = document.createElement('table');
-  // No border classes applied here.
   for (let key in attributes) {
     if (attributes.hasOwnProperty(key)) {
       const tr = document.createElement('tr');
@@ -232,7 +231,6 @@ function renderDetailsResults(rules, searchKeyword) {
     let headerMain = highlightText(ruleName, searchKeyword);
     let headerDetails = `<span class="text-sm text-gray-500">(Rev: ${rev}, ${published}, ${enabled})</span>`;
     
-    // Create header with ARIA roles for accessibility
     const header = document.createElement('div');
     header.className = "accordion-header flex justify-between items-center font-semibold text-lg";
     header.setAttribute("role", "button");
@@ -246,15 +244,17 @@ function renderDetailsResults(rules, searchKeyword) {
     header.appendChild(headerRight);
     
     const content = document.createElement('div');
-    content.className = "accordion-content";
+    content.className = "accordion-content"; // padding now set to 1.2rem via CSS
     content.style.display = "none";
     
-    // Conditionally render attributes table or raw JSON content
+    // If "Show attributes" is enabled, render the attributes table.
+    // Otherwise, remove the attributes from the raw JSON output.
     if (showAttributesEnabled() && rule.attributes) {
       const table = renderAttributesTable(rule.attributes);
       content.appendChild(table);
     } else {
       let ruleClone = filterResultObject(rule);
+      delete ruleClone.attributes;
       const rulePre = document.createElement('pre');
       rulePre.className = "text-sm break-words";
       rulePre.innerHTML = highlightText(JSON.stringify(ruleClone, null, 2), searchKeyword);
@@ -262,7 +262,7 @@ function renderDetailsResults(rules, searchKeyword) {
     }
     
     // Render settings code block if present
-    if (rule.attributes.settings) {
+    if (rule.attributes && rule.attributes.settings) {
       const settingsHeader = document.createElement('h3');
       settingsHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
       settingsHeader.innerText = "Settings:";
@@ -283,12 +283,12 @@ function renderDetailsResults(rules, searchKeyword) {
         const compItem = document.createElement('div');
         compItem.className = "mb-2 p-2 pl-4 border rounded component-bg";
         
-        // Conditionally render component attributes as table or raw JSON
         if (showAttributesEnabled() && comp.attributes) {
           const compTable = renderAttributesTable(comp.attributes);
           compItem.appendChild(compTable);
         } else {
           let compClone = filterResultObject(comp);
+          delete compClone.attributes;
           const compPre = document.createElement('pre');
           compPre.className = "text-sm break-words";
           compPre.innerHTML = highlightText(JSON.stringify(compClone, null, 2), searchKeyword);
@@ -378,6 +378,7 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
         content.appendChild(table);
       } else {
         let deClone = filterResultObject(de);
+        delete deClone.attributes;
         const dePre = document.createElement('pre');
         dePre.className = "text-sm break-words";
         dePre.innerHTML = highlightText(JSON.stringify(deClone, null, 2), searchKeyword);
@@ -448,6 +449,7 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
         content.appendChild(table);
       } else {
         let extClone = filterResultObject(ext);
+        delete extClone.attributes;
         const extPre = document.createElement('pre');
         extPre.className = "text-sm break-words";
         extPre.innerHTML = highlightText(JSON.stringify(extClone, null, 2), searchKeyword);
@@ -537,7 +539,6 @@ document.getElementById('getDetailsBtn').addEventListener('click', async () => {
 });
 
 // API fetching functions for rules, data elements, components, and extensions
-
 async function fetchAllRules(propertyId) {
   let rules = [];
   let pageNumber = 1;
