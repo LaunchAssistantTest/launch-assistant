@@ -7,21 +7,21 @@ let config = {
 };
 
 /**
- * Helper function to render an attributes object as an HTML table.
+ * Helper function to render an attributes object as an HTML table without borders.
  * @param {object} attributes 
  * @returns {HTMLElement} table element
  */
 function renderAttributesTable(attributes) {
   const table = document.createElement('table');
-  table.className = "w-full text-sm border-collapse mb-2";
+  // No border classes applied here.
   for (let key in attributes) {
     if (attributes.hasOwnProperty(key)) {
       const tr = document.createElement('tr');
       const tdKey = document.createElement('td');
-      tdKey.className = "border px-2 py-1 font-medium";
+      tdKey.className = "px-2 py-1 font-medium";
       tdKey.innerText = key;
       const tdValue = document.createElement('td');
-      tdValue.className = "border px-2 py-1";
+      tdValue.className = "px-2 py-1";
       let value = attributes[key];
       if (typeof value === 'object') {
         value = JSON.stringify(value, null, 2);
@@ -75,6 +75,11 @@ function toggleAccordion(header, content, icon) {
   header.setAttribute('aria-expanded', !isExpanded);
   content.style.display = isExpanded ? "none" : "block";
   icon.innerHTML = isExpanded ? `<i class="fa fa-chevron-down"></i>` : `<i class="fa fa-chevron-up"></i>`;
+}
+
+// Utility to check whether "Show attributes" is enabled
+function showAttributesEnabled() {
+  return document.getElementById("showAttributes").checked;
 }
 
 // Load stored settings from sessionStorage
@@ -241,11 +246,11 @@ function renderDetailsResults(rules, searchKeyword) {
     header.appendChild(headerRight);
     
     const content = document.createElement('div');
-    content.className = "accordion-content mt-2";
+    content.className = "accordion-content";
     content.style.display = "none";
     
-    // Render attributes as table if available
-    if (rule.attributes) {
+    // Conditionally render attributes table or raw JSON content
+    if (showAttributesEnabled() && rule.attributes) {
       const table = renderAttributesTable(rule.attributes);
       content.appendChild(table);
     } else {
@@ -259,7 +264,6 @@ function renderDetailsResults(rules, searchKeyword) {
     // Render settings code block if present
     if (rule.attributes.settings) {
       const settingsHeader = document.createElement('h3');
-      // Keep the bg for rules overall if needed
       settingsHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
       settingsHeader.innerText = "Settings:";
       content.appendChild(settingsHeader);
@@ -279,8 +283,8 @@ function renderDetailsResults(rules, searchKeyword) {
         const compItem = document.createElement('div');
         compItem.className = "mb-2 p-2 pl-4 border rounded component-bg";
         
-        // Render component attributes as table if available
-        if (comp.attributes) {
+        // Conditionally render component attributes as table or raw JSON
+        if (showAttributesEnabled() && comp.attributes) {
           const compTable = renderAttributesTable(comp.attributes);
           compItem.appendChild(compTable);
         } else {
@@ -305,7 +309,7 @@ function renderDetailsResults(rules, searchKeyword) {
             settingsTitle += " [" + comp.attributes.delegate_descriptor_id + "]";
           }
           const compSetHeader = document.createElement('h3');
-          // Remove the background from the settings header (no bg-blue-100 here)
+          // Remove background styling from rule component settings header
           compSetHeader.className = "text-lg font-bold p-2 rounded mt-2 mb-2";
           compSetHeader.innerText = settingsTitle;
           compItem.appendChild(compSetHeader);
@@ -366,11 +370,10 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
       header.appendChild(headerRight);
       
       const content = document.createElement('div');
-      content.className = "accordion-content mt-2";
+      content.className = "accordion-content";
       content.style.display = "none";
       
-      // Render attributes as table if available
-      if (de.attributes) {
+      if (showAttributesEnabled() && de.attributes) {
         const table = renderAttributesTable(de.attributes);
         content.appendChild(table);
       } else {
@@ -437,11 +440,10 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
       header.appendChild(headerRight);
       
       const content = document.createElement('div');
-      content.className = "accordion-content mt-2";
+      content.className = "accordion-content";
       content.style.display = "none";
       
-      // Render attributes as table if available
-      if (ext.attributes) {
+      if (showAttributesEnabled() && ext.attributes) {
         const table = renderAttributesTable(ext.attributes);
         content.appendChild(table);
       } else {
@@ -535,6 +537,7 @@ document.getElementById('getDetailsBtn').addEventListener('click', async () => {
 });
 
 // API fetching functions for rules, data elements, components, and extensions
+
 async function fetchAllRules(propertyId) {
   let rules = [];
   let pageNumber = 1;
