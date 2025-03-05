@@ -58,7 +58,9 @@ function formatJSCode(codeStr) {
   let cleaned = codeStr.replace(/\\n/g, "\n")
                        .replace(/\\t/g, "    ")
                        .replace(/\r\n/g, "\n")
-                       .trim();
+                       .replace(/\\\"|\"\\"/g, '"')
+                       .replace(/\\u0026/g, '&')
+                        .trim();
   return cleaned;
 }
 
