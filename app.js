@@ -215,6 +215,63 @@ document.getElementById('toggleAll').addEventListener('click', function() {
   }
 });
 
+// SEARCH BUTTON EVENT LISTENER
+document.getElementById('searchBtn').addEventListener('click', function() {
+  const query = document.getElementById('searchQuery').value.trim().toLowerCase();
+  const accordionItems = document.querySelectorAll('#searchResults .accordion-item');
+  
+  accordionItems.forEach(item => {
+    let found = false;
+    
+    // Process header text
+    const header = item.querySelector('.accordion-header');
+    let originalHeader = header.getAttribute('data-original');
+    if (!originalHeader) {
+      originalHeader = header.innerHTML;
+      header.setAttribute('data-original', originalHeader);
+    }
+    if (originalHeader.toLowerCase().includes(query)) {
+      found = true;
+      header.innerHTML = highlightText(originalHeader, query);
+    } else {
+      header.innerHTML = originalHeader;
+    }
+    
+    // Process <pre> elements (e.g., settings code blocks)
+    const preElements = item.querySelectorAll('pre');
+    preElements.forEach(pre => {
+      let originalText = pre.getAttribute('data-original');
+      if (!originalText) {
+        originalText = pre.innerHTML;
+        pre.setAttribute('data-original', originalText);
+      }
+      if (pre.classList.contains('component-bg')) {
+        originalText = formatJSCode(originalText);
+      }
+      if (originalText.toLowerCase().includes(query)) {
+        found = true;
+        pre.innerHTML = highlightText(originalText, query);
+      } else {
+        pre.innerHTML = originalText;
+      }
+    });
+    
+    if (found) {
+      item.style.display = "block";
+      const content = item.querySelector('.accordion-content');
+      if (content) {
+        content.style.display = "block";
+      }
+      const toggle = item.querySelector('.toggle-icon');
+      if (toggle) {
+        toggle.innerHTML = '<i class="fa fa-minus"></i>';
+      }
+    } else {
+      item.style.display = "none";
+    }
+  });
+});
+
 // Render functions for dynamic data
 
 function renderDetailsResults(rules, searchKeyword) {
@@ -244,19 +301,14 @@ function renderDetailsResults(rules, searchKeyword) {
     header.appendChild(headerRight);
     
     const content = document.createElement('div');
-    content.className = "accordion-content"; // padding set via CSS to 1.2rem
+    content.className = "accordion-content";
     content.style.display = "none";
     
-    // If "Show attributes" is enabled, render the attributes table.
-    // Otherwise, do not render any attributes.
     if (showAttributesEnabled() && rule.attributes) {
       const table = renderAttributesTable(rule.attributes);
       content.appendChild(table);
-    } else {
-      // Do not append any attributes or message
     }
     
-    // Render settings code block if present
     if (rule.attributes && rule.attributes.settings) {
       const settingsHeader = document.createElement('h3');
       settingsHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
@@ -268,7 +320,6 @@ function renderDetailsResults(rules, searchKeyword) {
       content.appendChild(codeBlock);
     }
     
-    // Render Rule Components
     if (rule.components && rule.components.length > 0) {
       const compHeader = document.createElement('h3');
       compHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
@@ -281,8 +332,6 @@ function renderDetailsResults(rules, searchKeyword) {
         if (showAttributesEnabled() && comp.attributes) {
           const compTable = renderAttributesTable(comp.attributes);
           compItem.appendChild(compTable);
-        } else {
-          // Do not render any attributes if not enabled
         }
         
         if (comp.attributes && comp.attributes.name) {
@@ -292,14 +341,12 @@ function renderDetailsResults(rules, searchKeyword) {
           compItem.insertBefore(compTitle, compItem.firstChild);
         }
         
-        // Render settings for component if exists.
         if (comp.attributes && comp.attributes.settings) {
           let settingsTitle = "Settings";
           if (comp.attributes.delegate_descriptor_id) {
             settingsTitle += " [" + comp.attributes.delegate_descriptor_id + "]";
           }
           const compSetHeader = document.createElement('h3');
-          // Remove background styling from rule component settings header
           compSetHeader.className = "text-lg font-bold p-2 rounded mt-2 mb-2";
           compSetHeader.innerText = settingsTitle;
           compItem.appendChild(compSetHeader);
@@ -366,8 +413,6 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
       if (showAttributesEnabled() && de.attributes) {
         const table = renderAttributesTable(de.attributes);
         content.appendChild(table);
-      } else {
-        // Do not render any attributes if not enabled
       }
       
       if (de.attributes.settings) {
@@ -377,7 +422,23 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
         content.appendChild(deSetHeader);
         const deCodeBlock = document.createElement('pre');
         deCodeBlock.className = "component-bg p-2 rounded font-mono text-sm";
-        deCodeBlock.innerText = formatJSCode(de.attributes.settings);
+        // If type is data_elements and delegate_descriptor_id equals the specified value,
+        // format the settings value as a nicely indented JSON.
+        if (
+          de.type === "data_elements" &&
+          de.attributes.delegate_descriptor_id === "adobe-alloy::dataElements::xdm-object"
+        ) {
+          try {
+            const jsonObj = typeof de.attributes.settings === "string" 
+              ? JSON.parse(de.attributes.settings) 
+              : de.attributes.settings;
+            deCodeBlock.innerText = JSON.stringify(jsonObj, null, 2);
+          } catch (e) {
+            deCodeBlock.innerText = formatJSCode(de.attributes.settings);
+          }
+        } else {
+          deCodeBlock.innerText = formatJSCode(de.attributes.settings);
+        }
         content.appendChild(deCodeBlock);
       }
       
@@ -432,8 +493,6 @@ function renderPropertyDetails(dataElements, extensions, searchKeyword) {
       if (showAttributesEnabled() && ext.attributes) {
         const table = renderAttributesTable(ext.attributes);
         content.appendChild(table);
-      } else {
-        // Do not render any attributes if not enabled
       }
       
       if (ext.attributes.settings) {
