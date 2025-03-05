@@ -60,7 +60,9 @@ function formatJSCode(codeStr) {
                        .replace(/\r\n/g, "\n")
                        .replace(/\\\"|\"\\"/g, '"')
                        .replace(/\\u0026/g, '&')
-                        .trim();
+                       .replace(/\\u003c/g, '<')
+                       .replace(/\\u003e/g, '>')
+                       .trim();
   return cleaned;
 }
 
