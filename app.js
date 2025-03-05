@@ -457,6 +457,8 @@ const AppController = (function() {
         });
       }
       document.getElementById("mainApp").classList.remove("hidden");
+      document.getElementById('configHeader').click()
+
     } catch (err) {
       console.error("Error fetching companies", err);
       document.getElementById("settingsMessage").textContent = "Error fetching companies. Check your credentials.";
