@@ -1,671 +1,655 @@
-// Global configuration object
-let config = {
-  accessToken: "",
-  orgId: "",
-  clientId: "",
-  clientSecret: ""
-};
+// Config module for managing API credentials and authentication
+const ConfigManager = (function() {
+  const CONFIG_KEYS = {
+    ACCESS_TOKEN: 'accessToken',
+    ORG_ID: 'orgId',
+    CLIENT_ID: 'clientId',
+    CLIENT_SECRET: 'clientSecret'
+  };
 
-/**
- * Helper function to render an attributes object as an HTML table without borders.
- * @param {object} attributes 
- * @returns {HTMLElement} table element
- */
-function renderAttributesTable(attributes) {
-  const table = document.createElement('table');
-  for (let key in attributes) {
-    if (attributes.hasOwnProperty(key)) {
-      const tr = document.createElement('tr');
-      const tdKey = document.createElement('td');
-      tdKey.className = "px-2 py-1 font-medium";
-      tdKey.innerText = key;
-      const tdValue = document.createElement('td');
-      tdValue.className = "px-2 py-1";
-      let value = attributes[key];
-      if (typeof value === 'object') {
-        value = JSON.stringify(value, null, 2);
-      }
-      tdValue.innerText = value;
-      tr.appendChild(tdKey);
-      tr.appendChild(tdValue);
-      table.appendChild(tr);
-    }
-  }
-  return table;
-}
+  let config = {
+    accessToken: "",
+    orgId: "",
+    clientId: "",
+    clientSecret: ""
+  };
 
-function updateGlobalConfig() {
-  config.accessToken = document.getElementById('accessToken').value.trim();
-  config.orgId = document.getElementById('orgId').value.trim();
-  config.clientId = document.getElementById('clientId').value.trim();
-  config.clientSecret = document.getElementById('clientSecret').value.trim();
-}
-
-function filterResultObject(obj) {
-  let clone = JSON.parse(JSON.stringify(obj));
-  delete clone.relationships;
-  delete clone.links;
-  delete clone.meta;
-  delete clone.components;
-  if (clone.attributes && clone.attributes.settings) {
-    delete clone.attributes.settings;
-  }
-  return clone;
-}
-
-function formatJSCode(codeStr) {
-  if (typeof codeStr !== "string") return "";
-  let cleaned = codeStr.replace(/\\n/g, "\n")
-                       .replace(/\\t/g, "    ")
-                       .replace(/\r\n/g, "\n")
-                       .replace(/\\\"|\"\\"/g, '"')
-                       .replace(/\\u0026/g, '&')
-                       .replace(/\\u003c/g, '<')
-                       .replace(/\\u003e/g, '>')
-                       .trim();
-  return cleaned;
-}
-
-function highlightText(text, keyword) {
-  if (!keyword) return text;
-  const escapedKeyword = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-  const regex = new RegExp(`(${escapedKeyword})`, 'gi');
-  return text.replace(regex, `<span class="highlight">$1</span>`);
-}
-
-function toggleAccordion(header, content, icon) {
-  const isExpanded = header.getAttribute('aria-expanded') === "true";
-  header.setAttribute('aria-expanded', !isExpanded);
-  content.style.display = isExpanded ? "none" : "block";
-  icon.innerHTML = isExpanded ? `<i class="fa fa-chevron-down"></i>` : `<i class="fa fa-chevron-up"></i>`;
-}
-
-// Utility to check whether "Show attributes" is enabled
-function showAttributesEnabled() {
-  return document.getElementById("showAttributes").checked;
-}
-
-// Load stored settings from sessionStorage
-window.addEventListener('load', () => {
-  const storedAccessToken = sessionStorage.getItem('accessToken');
-  if (storedAccessToken) document.getElementById('accessToken').value = storedAccessToken;
-  const storedOrgId = sessionStorage.getItem('orgId');
-  if (storedOrgId) document.getElementById('orgId').value = storedOrgId;
-  const storedClientId = sessionStorage.getItem('clientId');
-  if (storedClientId) document.getElementById('clientId').value = storedClientId;
-  const storedClientSecret = sessionStorage.getItem('clientSecret');
-  if (storedClientSecret) document.getElementById('clientSecret').value = storedClientSecret;
-});
-
-// Toggle Configuration Accordion
-const configHeader = document.getElementById('configHeader');
-const configContent = document.getElementById('configContent');
-const configToggleIcon = document.getElementById('configToggleIcon');
-configHeader.addEventListener('click', () => {
-  toggleAccordion(configHeader, configContent, configToggleIcon);
-});
-
-// Update Settings Button
-document.getElementById('updateSettings').addEventListener('click', async () => {
-  updateGlobalConfig();
-  if (config.accessToken && config.orgId && config.clientId && config.clientSecret) {
-    sessionStorage.setItem('accessToken', config.accessToken);
-    sessionStorage.setItem('orgId', config.orgId);
-    sessionStorage.setItem('clientId', config.clientId);
-    sessionStorage.setItem('clientSecret', config.clientSecret);
-    document.getElementById('settingsMessage').innerText = "Settings updated successfully!";
-    await fetchCompanies();
-  } else {
-    document.getElementById('settingsMessage').innerText = "Please fill in all fields.";
-  }
-});
-
-// Fetch companies from API and populate company select
-async function fetchCompanies() {
-  const url = "https://reactor.adobe.io/companies";
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Authorization": "Bearer " + config.accessToken,
-        "x-api-key": config.clientId,
-        "x-gw-ims-org-id": config.orgId,
-        "Content-Type": "application/vnd.api+json",
-        "Accept": "application/vnd.api+json;revision=1"
+  // Load stored settings from sessionStorage
+  const loadStoredSettings = () => {
+    Object.values(CONFIG_KEYS).forEach(key => {
+      const storedValue = sessionStorage.getItem(key);
+      if (storedValue) {
+        document.getElementById(key).value = storedValue;
+        config[key] = storedValue;
       }
     });
-    const data = await response.json();
-    const companySelect = document.getElementById("companySelect");
-    companySelect.innerHTML = '<option value="">Select Company</option>';
-    if (data.data && Array.isArray(data.data)) {
-      data.data.forEach(company => {
-        const option = document.createElement("option");
-        option.value = company.id;
-        option.text = company.attributes.name;
-        companySelect.appendChild(option);
-      });
-    }
-    document.getElementById("mainApp").classList.remove("hidden");
-  } catch (err) {
-    console.error("Error fetching companies", err);
-    document.getElementById("settingsMessage").innerText = "Error fetching companies. Check your credentials.";
-  }
-}
+  };
 
-// When a company is selected, fetch its properties
-document.getElementById('companySelect').addEventListener('change', function() {
-  const companyId = this.value;
-  if (companyId) {
-    fetchPropertiesForCompany(companyId);
-  }
-});
-
-// Fetch properties for a selected company
-async function fetchPropertiesForCompany(companyId) {
-  const url = `https://reactor.adobe.io/companies/${companyId}/properties`;
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Authorization": "Bearer " + config.accessToken,
-        "x-api-key": config.clientId,
-        "x-gw-ims-org-id": config.orgId,
-        "Content-Type": "application/vnd.api+json",
-        "Accept": "application/vnd.api+json;revision=1"
-      }
+  // Update config from form inputs
+  const updateFromForm = () => {
+    Object.values(CONFIG_KEYS).forEach(key => {
+      config[key] = document.getElementById(key).value.trim();
     });
-    const data = await response.json();
-    const propertySelect = document.getElementById("propertySelect");
-    propertySelect.innerHTML = '<option value="">Select Property</option>';
-    if (data.data && Array.isArray(data.data)) {
-      data.data.forEach(prop => {
-        const option = document.createElement("option");
-        option.value = prop.id;
-        option.text = prop.attributes.name;
-        propertySelect.appendChild(option);
-      });
-    }
-  } catch (err) {
-    console.error("Error fetching properties", err);
-  }
-}
+    return isConfigComplete();
+  };
 
-// Tab Switching Logic
-const tabButtons = document.querySelectorAll('.tab-btn');
-tabButtons.forEach(btn => {
-  btn.addEventListener('click', function() {
+  // Save config to sessionStorage
+  const saveToStorage = () => {
+    Object.values(CONFIG_KEYS).forEach(key => {
+      sessionStorage.setItem(key, config[key]);
+    });
+  };
+
+  // Check if all config fields are filled
+  const isConfigComplete = () => {
+    return Object.values(config).every(value => value.trim() !== "");
+  };
+
+  // Get auth headers for API requests
+  const getAuthHeaders = () => {
+    return {
+      "Authorization": "Bearer " + config.accessToken,
+      "x-api-key": config.clientId,
+      "x-gw-ims-org-id": config.orgId,
+      "Content-Type": "application/vnd.api+json",
+      "Accept": "application/vnd.api+json;revision=1"
+    };
+  };
+
+  return {
+    loadStoredSettings,
+    updateFromForm,
+    saveToStorage,
+    isConfigComplete,
+    getAuthHeaders,
+    get: () => config
+  };
+})();
+
+// API service for handling all API requests
+const APIService = (function() {
+  const API_BASE_URL = "https://reactor.adobe.io";
+
+  // Generic fetch function with error handling
+  const fetchAPI = async (endpoint, options = {}) => {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const defaultOptions = {
+      method: "GET",
+      headers: ConfigManager.getAuthHeaders()
+    };
+    
+    try {
+      const response = await fetch(url, { ...defaultOptions, ...options });
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching ${url}:`, error);
+      throw error;
+    }
+  };
+
+  // Paginated fetch for endpoints that return multiple pages of results
+  const fetchAllPages = async (endpoint) => {
+    let results = [];
+    let pageNumber = 1;
+    let totalPages = 1;
+    
+    do {
+      const paginatedEndpoint = `${endpoint}${endpoint.includes('?') ? '&' : '?'}page[size]=100&page[number]=${pageNumber}`;
+      const data = await fetchAPI(paginatedEndpoint);
+      
+      if (data.data) {
+        results = results.concat(data.data);
+      }
+      
+      if (data.meta && data.meta.pagination) {
+        totalPages = data.meta.pagination.total_pages;
+      }
+      
+      pageNumber++;
+    } while (pageNumber <= totalPages);
+    
+    return results;
+  };
+
+  // API methods for specific endpoints
+  return {
+    getCompanies: () => fetchAPI("/companies"),
+    getProperties: (companyId) => fetchAPI(`/companies/${companyId}/properties`),
+    getRules: (propertyId) => fetchAllPages(`/properties/${propertyId}/rules`),
+    getDataElements: (propertyId) => fetchAllPages(`/properties/${propertyId}/data_elements`),
+    getRuleComponents: (ruleId) => fetchAPI(`/rules/${ruleId}/rule_components`),
+    getExtensions: (propertyId) => fetchAPI(`/properties/${propertyId}/extensions`)
+  };
+})();
+
+// UI Utilities for DOM manipulation and rendering
+const UIUtils = (function() {
+  // Format JavaScript code for display
+  const formatJSCode = (codeStr) => {
+    if (typeof codeStr !== "string") return "";
+    return codeStr.replace(/\\n/g, "\n")
+                  .replace(/\\t/g, "    ")
+                  .replace(/\r\n/g, "\n")
+                  .replace(/\\\"|\"\\"/g, '"')
+                  .replace(/\\u0026/g, '&')
+                  .replace(/\\u003c/g, '<')
+                  .replace(/\\u003e/g, '>')
+                  .trim();
+  };
+
+  // Highlight search terms in text
+  const highlightText = (text, keyword) => {
+    if (!keyword) return text;
+    const escapedKeyword = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+    return text.replace(regex, `<span class="highlight">$1</span>`);
+  };
+
+  // Toggle accordion sections
+  const toggleAccordion = (header, content, icon) => {
+    const isExpanded = header.getAttribute('aria-expanded') === "true";
+    header.setAttribute('aria-expanded', !isExpanded);
+    content.style.display = isExpanded ? "none" : "block";
+    icon.innerHTML = isExpanded 
+      ? `<i class="fa fa-chevron-down"></i>` 
+      : `<i class="fa fa-chevron-up"></i>`;
+  };
+
+  // Create accordion items for rules, data elements, etc.
+  const createAccordionItem = (item, options = {}) => {
+    const { title, subtitle, searchKeyword, content } = options;
+    const accordionItem = document.createElement('div');
+    accordionItem.className = "accordion-item mb-4 p-2 border rounded bg-white";
+    
+    // Create header with title and toggle icon
+    const header = document.createElement('div');
+    header.className = "accordion-header flex justify-between items-center font-semibold text-lg";
+    header.setAttribute("role", "button");
+    header.setAttribute("aria-expanded", "false");
+    
+    const headerLeft = document.createElement('div');
+    headerLeft.innerHTML = highlightText(title, searchKeyword) + (subtitle ? ` ${subtitle}` : '');
+    
+    const headerRight = document.createElement('div');
+    headerRight.className = "toggle-icon text-xl";
+    headerRight.innerHTML = `<i class="fa fa-plus"></i>`;
+    
+    header.appendChild(headerLeft);
+    header.appendChild(headerRight);
+    
+    // Create content container
+    const contentContainer = document.createElement('div');
+    contentContainer.className = "accordion-content";
+    contentContainer.style.display = "none";
+    
+    if (content) {
+      contentContainer.appendChild(content);
+    }
+    
+    // Add toggle event listener
+    header.addEventListener('click', () => {
+      const isExpanded = contentContainer.style.display === "block";
+      contentContainer.style.display = isExpanded ? "none" : "block";
+      header.setAttribute("aria-expanded", !isExpanded);
+      headerRight.innerHTML = isExpanded 
+        ? `<i class="fa fa-plus"></i>` 
+        : `<i class="fa fa-minus"></i>`;
+    });
+    
+    accordionItem.appendChild(header);
+    accordionItem.appendChild(contentContainer);
+    
+    return accordionItem;
+  };
+
+  // Render attributes as a table
+  const renderAttributesTable = (attributes) => {
+    const table = document.createElement('table');
+    table.className = "attributes-table";
+    for (let key in attributes) {
+      if (attributes.hasOwnProperty(key)) {
+        const tr = document.createElement('tr');
+        const tdKey = document.createElement('td');
+        tdKey.className = "px-2 py-1 font-medium";
+        tdKey.textContent = key;
+        const tdValue = document.createElement('td');
+        tdValue.className = "px-2 py-1";
+        let value = attributes[key];
+        if (typeof value === 'object') {
+          value = JSON.stringify(value, null, 2);
+        }
+        tdValue.textContent = value;
+        tr.appendChild(tdKey);
+        tr.appendChild(tdValue);
+        table.appendChild(tr);
+      }
+    }
+    return table;
+  };
+  
+  // Create a titled section
+  const createSection = (title, className = "") => {
+    const section = document.createElement('div');
+    if (className) {
+      section.className = className;
+    }
+    const heading = document.createElement('h3');
+    heading.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
+    heading.textContent = title;
+    section.appendChild(heading);
+    return section;
+  };
+  
+  // Create a code block
+  const createCodeBlock = (code, language = "") => {
+    const pre = document.createElement('pre');
+    pre.className = "component-bg p-2 rounded font-mono text-sm";
+    pre.textContent = language === 'json' 
+      ? JSON.stringify(JSON.parse(code), null, 2) 
+      : formatJSCode(code);
+    return pre;
+  };
+  
+  // Show/hide loading indicator
+  const toggleLoading = (show = true) => {
+    document.getElementById('loadingIndicator').classList.toggle('hidden', !show);
+  };
+  
+  // Check if "Show attributes" option is enabled
+  const showAttributesEnabled = () => {
+    return document.getElementById("showAttributes").checked;
+  };
+  
+  // Clear UI container
+  const clearContainer = (containerId) => {
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.innerHTML = '';
+    }
+    return container;
+  };
+
+  return {
+    formatJSCode,
+    highlightText,
+    toggleAccordion,
+    createAccordionItem,
+    renderAttributesTable,
+    createSection,
+    createCodeBlock,
+    toggleLoading,
+    showAttributesEnabled,
+    clearContainer
+  };
+})();
+
+// Controller for handling the app's business logic
+const AppController = (function() {
+  // Initialize the application
+  const init = () => {
+    attachEventListeners();
+    ConfigManager.loadStoredSettings();
+    setupUIState();
+  };
+  
+  // Set up initial UI state
+  const setupUIState = () => {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons[0].classList.add('active');
+    document.getElementById('search').style.display = 'block';
+    if (ConfigManager.isConfigComplete()) {
+      fetchCompanies();
+    }
+  };
+  
+  // Attach all event listeners
+  const attachEventListeners = () => {
+    const configHeader = document.getElementById('configHeader');
+    const configContent = document.getElementById('configContent');
+    const configToggleIcon = document.getElementById('configToggleIcon');
+    configHeader.addEventListener('click', () => {
+      UIUtils.toggleAccordion(configHeader, configContent, configToggleIcon);
+    });
+    document.getElementById('updateSettings').addEventListener('click', updateSettings);
+    document.getElementById('companySelect').addEventListener('change', handleCompanySelection);
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', handleTabSwitch);
+    });
+    document.getElementById('toggleAll').addEventListener('click', toggleAllAccordions);
+    document.getElementById('searchBtn').addEventListener('click', handleSearch);
+    document.getElementById('getDetailsBtn').addEventListener('click', handleGetDetails);
+  };
+  
+  const updateSettings = async () => {
+    const messageEl = document.getElementById('settingsMessage');
+    if (ConfigManager.updateFromForm()) {
+      ConfigManager.saveToStorage();
+      messageEl.textContent = "Settings updated successfully!";
+      messageEl.className = "mt-2 text-green-600";
+      await fetchCompanies();
+    } else {
+      messageEl.textContent = "Please fill in all fields.";
+      messageEl.className = "mt-2 text-red-600";
+    }
+  };
+  
+  const handleCompanySelection = function() {
+    const companyId = this.value;
+    if (companyId) {
+      fetchPropertiesForCompany(companyId);
+    }
+  };
+  
+  const handleTabSwitch = function() {
     const tabName = this.getAttribute('data-tab');
-    tabButtons.forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
     document.querySelectorAll('.tab').forEach(tab => {
       tab.style.display = 'none';
     });
     document.getElementById(tabName).style.display = 'block';
-  });
-});
-
-// Toggle All Accordion Sections
-let allExpanded = false;
-document.getElementById('toggleAll').addEventListener('click', function() {
-  const contents = document.querySelectorAll('.accordion-content');
-  if (allExpanded) {
-    contents.forEach(content => content.style.display = "none");
-    this.textContent = "Expand All";
-    allExpanded = false;
-  } else {
-    contents.forEach(content => content.style.display = "block");
-    this.textContent = "Collapse All";
-    allExpanded = true;
-  }
-});
-
-// SEARCH BUTTON EVENT LISTENER
-document.getElementById('searchBtn').addEventListener('click', function() {
-  const query = document.getElementById('searchQuery').value.trim().toLowerCase();
-  const accordionItems = document.querySelectorAll('#searchResults .accordion-item');
+  };
   
-  accordionItems.forEach(item => {
-    let found = false;
-    
-    // Process header text
-    const header = item.querySelector('.accordion-header');
-    let originalHeader = header.getAttribute('data-original');
-    if (!originalHeader) {
-      originalHeader = header.innerHTML;
-      header.setAttribute('data-original', originalHeader);
-    }
-    if (originalHeader.toLowerCase().includes(query)) {
-      found = true;
-      header.innerHTML = highlightText(originalHeader, query);
-    } else {
-      header.innerHTML = originalHeader;
-    }
-    
-    // Process <pre> elements (e.g., settings code blocks)
-    const preElements = item.querySelectorAll('pre');
-    preElements.forEach(pre => {
-      let originalText = pre.getAttribute('data-original');
-      if (!originalText) {
-        originalText = pre.innerHTML;
-        pre.setAttribute('data-original', originalText);
+  const toggleAllAccordions = function() {
+    const contents = document.querySelectorAll('.accordion-content');
+    const toggleButton = this;
+    const allExpanded = toggleButton.textContent === "Collapse All";
+    contents.forEach(content => {
+      content.style.display = allExpanded ? "none" : "block";
+    });
+    toggleButton.textContent = allExpanded ? "Expand All" : "Collapse All";
+  };
+  
+  const handleSearch = function() {
+    const query = document.getElementById('searchQuery').value.trim().toLowerCase();
+    if (!query) return;
+    const accordionItems = document.querySelectorAll('#searchResults .accordion-item');
+    accordionItems.forEach(item => {
+      let found = false;
+      const header = item.querySelector('.accordion-header');
+      let originalHeader = header.getAttribute('data-original');
+      if (!originalHeader) {
+        originalHeader = header.innerHTML;
+        header.setAttribute('data-original', originalHeader);
       }
-      if (pre.classList.contains('component-bg')) {
-        originalText = formatJSCode(originalText);
-      }
-      if (originalText.toLowerCase().includes(query)) {
+      if (originalHeader.toLowerCase().includes(query)) {
         found = true;
-        pre.innerHTML = highlightText(originalText, query);
+        header.innerHTML = UIUtils.highlightText(originalHeader, query);
       } else {
-        pre.innerHTML = originalText;
+        header.innerHTML = originalHeader;
       }
-    });
-    
-    if (found) {
-      item.style.display = "block";
-      const content = item.querySelector('.accordion-content');
-      if (content) {
-        content.style.display = "block";
-      }
-      const toggle = item.querySelector('.toggle-icon');
-      if (toggle) {
-        toggle.innerHTML = '<i class="fa fa-minus"></i>';
-      }
-    } else {
-      item.style.display = "none";
-    }
-  });
-});
-
-// Render functions for dynamic data
-
-function renderDetailsResults(rules, searchKeyword) {
-  const resultsDiv = document.getElementById('searchResults');
-  let serial = 1;
-  rules.forEach(rule => {
-    const accordionItem = document.createElement('div');
-    accordionItem.className = "accordion-item mb-4 p-2 border rounded bg-white";
-    
-    const ruleName = rule.attributes.name || "Unnamed Rule";
-    const rev = rule.meta && rule.meta.latest_revision_number ? rule.meta.latest_revision_number : (rule.attributes.latest_revision || "N/A");
-    const published = rule.attributes.published ? "Published" : "Not Published";
-    const enabled = rule.attributes.enabled ? "Enabled" : "Not Enabled";
-    let headerMain = highlightText(ruleName, searchKeyword);
-    let headerDetails = `<span class="text-sm text-gray-500">(Rev: ${rev}, ${published}, ${enabled})</span>`;
-    
-    const header = document.createElement('div');
-    header.className = "accordion-header flex justify-between items-center font-semibold text-lg";
-    header.setAttribute("role", "button");
-    header.setAttribute("aria-expanded", "false");
-    const headerLeft = document.createElement('div');
-    headerLeft.innerHTML = `<span class="mr-2">${serial++}.</span> ${headerMain} ${headerDetails}`;
-    const headerRight = document.createElement('div');
-    headerRight.className = "toggle-icon text-xl";
-    headerRight.innerHTML = `<i class="fa fa-plus"></i>`;
-    header.appendChild(headerLeft);
-    header.appendChild(headerRight);
-    
-    const content = document.createElement('div');
-    content.className = "accordion-content";
-    content.style.display = "none";
-    
-    if (showAttributesEnabled() && rule.attributes) {
-      const table = renderAttributesTable(rule.attributes);
-      content.appendChild(table);
-    }
-    
-    if (rule.attributes && rule.attributes.settings) {
-      const settingsHeader = document.createElement('h3');
-      settingsHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
-      settingsHeader.innerText = "Settings:";
-      content.appendChild(settingsHeader);
-      const codeBlock = document.createElement('pre');
-      codeBlock.className = "component-bg p-2 rounded font-mono text-sm";
-      codeBlock.innerText = formatJSCode(rule.attributes.settings);
-      content.appendChild(codeBlock);
-    }
-    
-    if (rule.components && rule.components.length > 0) {
-      const compHeader = document.createElement('h3');
-      compHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
-      compHeader.innerText = "Rule Components:";
-      content.appendChild(compHeader);
-      rule.components.forEach(comp => {
-        const compItem = document.createElement('div');
-        compItem.className = "mb-2 p-2 pl-4 border rounded component-bg";
-        
-        if (showAttributesEnabled() && comp.attributes) {
-          const compTable = renderAttributesTable(comp.attributes);
-          compItem.appendChild(compTable);
+      const preElements = item.querySelectorAll('pre');
+      preElements.forEach(pre => {
+        let originalText = pre.getAttribute('data-original');
+        if (!originalText) {
+          originalText = pre.innerHTML;
+          pre.setAttribute('data-original', originalText);
         }
-        
-        if (comp.attributes && comp.attributes.name) {
-          const compTitle = document.createElement('h4');
-          compTitle.className = "text-base font-medium mb-1";
-          compTitle.innerText = comp.attributes.name;
-          compItem.insertBefore(compTitle, compItem.firstChild);
+        if (pre.classList.contains('component-bg')) {
+          originalText = UIUtils.formatJSCode(originalText);
         }
-        
-        if (comp.attributes && comp.attributes.settings) {
-          let settingsTitle = "Settings";
-          if (comp.attributes.delegate_descriptor_id) {
-            settingsTitle += " [" + comp.attributes.delegate_descriptor_id + "]";
-          }
-          const compSetHeader = document.createElement('h3');
-          compSetHeader.className = "text-lg font-bold p-2 rounded mt-2 mb-2";
-          compSetHeader.innerText = settingsTitle;
-          compItem.appendChild(compSetHeader);
-          const compCodeBlock = document.createElement('pre');
-          compCodeBlock.className = "component-bg p-2 rounded font-mono text-sm";
-          compCodeBlock.innerText = formatJSCode(comp.attributes.settings);
-          compItem.appendChild(compCodeBlock);
+        if (originalText.toLowerCase().includes(query)) {
+          found = true;
+          pre.innerHTML = UIUtils.highlightText(originalText, query);
+        } else {
+          pre.innerHTML = originalText;
         }
-        content.appendChild(compItem);
       });
-    }
-    
-    header.addEventListener('click', () => {
-      if (content.style.display === "block") {
-        content.style.display = "none";
-        header.setAttribute("aria-expanded", "false");
-        headerRight.innerHTML = `<i class="fa fa-plus"></i>`;
-      } else {
-        content.style.display = "block";
-        header.setAttribute("aria-expanded", "true");
-        headerRight.innerHTML = `<i class="fa fa-minus"></i>`;
+      item.style.display = found ? "block" : "none";
+      if (found) {
+        const content = item.querySelector('.accordion-content');
+        const toggle = item.querySelector('.toggle-icon');
+        if (content) { content.style.display = "block"; }
+        if (toggle) { toggle.innerHTML = '<i class="fa fa-minus"></i>'; }
       }
     });
-    
-    accordionItem.appendChild(header);
-    accordionItem.appendChild(content);
-    resultsDiv.appendChild(accordionItem);
-  });
-}
-
-function renderPropertyDetails(dataElements, extensions, searchKeyword) {
-  const resultsDiv = document.getElementById('searchResults');
+  };
   
-  if (dataElements.length > 0) {
-    const deHeader = document.createElement('h3');
-    deHeader.className = "text-xl font-bold bg-blue-100 p-2 rounded mt-6 mb-2";
-    deHeader.innerText = "Data Elements:";
-    resultsDiv.appendChild(deHeader);
-    dataElements.forEach(de => {
-      const accordionItem = document.createElement('div');
-      accordionItem.className = "accordion-item mb-4 p-2 border rounded bg-white";
-      const deName = de.attributes.name || "Unnamed Data Element";
-      const rev = de.meta && de.meta.latest_revision_number ? de.meta.latest_revision_number : (de.attributes.latest_revision || "N/A");
-      const published = de.attributes.published ? "Published" : "Not Published";
-      const enabled = de.attributes.enabled ? "Enabled" : "Not Enabled";
-      let headerMain = highlightText(deName, searchKeyword);
-      let headerDetails = `<span class="text-sm text-gray-500">(Rev: ${rev}, ${published}, ${enabled})</span>`;
-      const header = document.createElement('div');
-      header.className = "accordion-header flex justify-between items-center font-semibold text-lg";
-      header.setAttribute("role", "button");
-      header.setAttribute("aria-expanded", "false");
-      const headerLeft = document.createElement('div');
-      headerLeft.innerHTML = headerMain + " " + headerDetails;
-      const headerRight = document.createElement('div');
-      headerRight.className = "toggle-icon text-xl";
-      headerRight.innerHTML = `<i class="fa fa-plus"></i>`;
-      header.appendChild(headerLeft);
-      header.appendChild(headerRight);
-      
-      const content = document.createElement('div');
-      content.className = "accordion-content";
-      content.style.display = "none";
-      
-      if (showAttributesEnabled() && de.attributes) {
-        const table = renderAttributesTable(de.attributes);
-        content.appendChild(table);
+  const handleGetDetails = async () => {
+    const query = document.getElementById('searchQuery').value.trim();
+    const propertyId = document.getElementById('propertySelect').value;
+    if (!propertyId) {
+      alert("Please select a property.");
+      return;
+    }
+    UIUtils.toggleLoading(true);
+    try {
+      let rules = await APIService.getRules(propertyId);
+      const searchForRevisions = document.getElementById('searchRevisions').checked;
+      if (!searchForRevisions) {
+        rules = rules.filter(rule => rule.attributes && rule.attributes.published === true);
       }
-      
-      if (de.attributes.settings) {
-        const deSetHeader = document.createElement('h3');
-        deSetHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-2 mb-2";
-        deSetHeader.innerText = "Settings:";
-        content.appendChild(deSetHeader);
-        const deCodeBlock = document.createElement('pre');
-        deCodeBlock.className = "component-bg p-2 rounded font-mono text-sm";
-        // If type is data_elements and delegate_descriptor_id equals the specified value,
-        // format the settings value as a nicely indented JSON.
-        if (
-          de.type === "data_elements" &&
-          de.attributes.delegate_descriptor_id === "adobe-alloy::dataElements::xdm-object"
-        ) {
-          try {
-            const jsonObj = typeof de.attributes.settings === "string" 
-              ? JSON.parse(de.attributes.settings) 
-              : de.attributes.settings;
-            deCodeBlock.innerText = JSON.stringify(jsonObj, null, 2);
-          } catch (e) {
-            deCodeBlock.innerText = formatJSCode(de.attributes.settings);
-          }
-        } else {
-          deCodeBlock.innerText = formatJSCode(de.attributes.settings);
-        }
-        content.appendChild(deCodeBlock);
+      if (query) {
+        rules = rules.filter(rule => rule.attributes && rule.attributes.name && 
+                                    rule.attributes.name.toLowerCase().includes(query.toLowerCase()));
       }
-      
-      header.addEventListener('click', () => {
-        if (content.style.display === "block") {
-          content.style.display = "none";
-          header.setAttribute("aria-expanded", "false");
-          headerRight.innerHTML = `<i class="fa fa-plus"></i>`;
-        } else {
-          content.style.display = "block";
-          header.setAttribute("aria-expanded", "true");
-          headerRight.innerHTML = `<i class="fa fa-minus"></i>`;
-        }
-      });
-      
-      accordionItem.appendChild(header);
-      accordionItem.appendChild(content);
-      resultsDiv.appendChild(accordionItem);
-    });
-  }
+      for (let rule of rules) {
+        const componentData = await APIService.getRuleComponents(rule.id);
+        rule.components = componentData.data || [];
+      }
+      const dataElements = await APIService.getDataElements(propertyId);
+      const extensionsData = await APIService.getExtensions(propertyId);
+      const extensions = extensionsData.data || [];
+      renderResults(rules, dataElements, extensions, query);
+    } catch (error) {
+      console.error("Error in Get Details:", error);
+      alert("An error occurred while fetching details. Please check the console for more information.");
+    } finally {
+      UIUtils.toggleLoading(false);
+    }
+  };
   
-  if (extensions.length > 0) {
-    const extHeader = document.createElement('h3');
-    extHeader.className = "text-xl font-bold bg-blue-100 p-2 rounded mt-6 mb-2";
-    extHeader.innerText = "Extensions:";
-    resultsDiv.appendChild(extHeader);
-    extensions.forEach(ext => {
-      const accordionItem = document.createElement('div');
-      accordionItem.className = "accordion-item mb-4 p-2 border rounded bg-white";
-      const extName = ext.attributes.display_name || "Unnamed Extension";
-      const rev = ext.meta && ext.meta.latest_revision_number ? ext.meta.latest_revision_number : (ext.attributes.latest_revision || "N/A");
-      const published = ext.attributes.published ? "Published" : "Not Published";
-      const enabled = ext.attributes.enabled ? "Enabled" : "Not Enabled";
-      let headerMain = highlightText(extName, searchKeyword);
-      let headerDetails = `<span class="text-sm text-gray-500">(Rev: ${rev}, ${published}, ${enabled})</span>`;
-      const header = document.createElement('div');
-      header.className = "accordion-header flex justify-between items-center font-semibold text-lg";
-      header.setAttribute("role", "button");
-      header.setAttribute("aria-expanded", "false");
-      const headerLeft = document.createElement('div');
-      headerLeft.innerHTML = headerMain + " " + headerDetails;
-      const headerRight = document.createElement('div');
-      headerRight.className = "toggle-icon text-xl";
-      headerRight.innerHTML = `<i class="fa fa-plus"></i>`;
-      header.appendChild(headerLeft);
-      header.appendChild(headerRight);
-      
-      const content = document.createElement('div');
-      content.className = "accordion-content";
-      content.style.display = "none";
-      
-      if (showAttributesEnabled() && ext.attributes) {
-        const table = renderAttributesTable(ext.attributes);
-        content.appendChild(table);
+  const fetchCompanies = async () => {
+    try {
+      const data = await APIService.getCompanies();
+      const companySelect = document.getElementById("companySelect");
+      companySelect.innerHTML = '<option value="">Select Company</option>';
+      if (data.data && Array.isArray(data.data)) {
+        data.data.forEach(company => {
+          const option = document.createElement("option");
+          option.value = company.id;
+          option.text = company.attributes.name;
+          companySelect.appendChild(option);
+        });
       }
-      
-      if (ext.attributes.settings) {
-        let settingsTitle = "Settings";
-        if (ext.attributes.delegate_descriptor_id) {
-          settingsTitle += " [" + ext.attributes.delegate_descriptor_id + "]";
-        }
-        const extSetHeader = document.createElement('h3');
-        extSetHeader.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-2 mb-2";
-        extSetHeader.innerText = settingsTitle;
-        content.appendChild(extSetHeader);
-        const extCodeBlock = document.createElement('pre');
-        extCodeBlock.className = "component-bg p-2 rounded font-mono text-sm";
-        extCodeBlock.innerText = formatJSCode(ext.attributes.settings);
-        content.appendChild(extCodeBlock);
+      document.getElementById("mainApp").classList.remove("hidden");
+    } catch (err) {
+      console.error("Error fetching companies", err);
+      document.getElementById("settingsMessage").textContent = "Error fetching companies. Check your credentials.";
+      document.getElementById("settingsMessage").className = "mt-2 text-red-600";
+    }
+  };
+  
+  const fetchPropertiesForCompany = async (companyId) => {
+    try {
+      const data = await APIService.getProperties(companyId);
+      const propertySelect = document.getElementById("propertySelect");
+      propertySelect.innerHTML = '<option value="">Select Property</option>';
+      if (data.data && Array.isArray(data.data)) {
+        data.data.forEach(prop => {
+          const option = document.createElement("option");
+          option.value = prop.id;
+          option.text = prop.attributes.name;
+          propertySelect.appendChild(option);
+        });
       }
-      
-      header.addEventListener('click', () => {
-        if (content.style.display === "block") {
-          content.style.display = "none";
-          header.setAttribute("aria-expanded", "false");
-          headerRight.innerHTML = `<i class="fa fa-plus"></i>`;
-        } else {
-          content.style.display = "block";
-          header.setAttribute("aria-expanded", "true");
-          headerRight.innerHTML = `<i class="fa fa-minus"></i>`;
-        }
-      });
-      
-      accordionItem.appendChild(header);
-      accordionItem.appendChild(content);
-      resultsDiv.appendChild(accordionItem);
-    });
-  }
-}
-
-// Show loading indicator
-function showLoading(show = true) {
-  const indicator = document.getElementById('loadingIndicator');
-  indicator.classList.toggle('hidden', !show);
-}
-
-// Get Details Button Logic
-document.getElementById('getDetailsBtn').addEventListener('click', async () => {
-  const query = document.getElementById('searchQuery').value.trim();
-  const propertyId = document.getElementById('propertySelect').value;
-  if (!propertyId) {
-    alert("Please select a property.");
-    return;
-  }
-  showLoading(true);
-  try {
-    let rules = await fetchAllRules(propertyId);
-    const searchForRevisions = document.getElementById('searchRevisions').checked;
-    if (!searchForRevisions) {
-      rules = rules.filter(rule => rule.attributes && rule.attributes.published === true);
+    } catch (err) {
+      console.error("Error fetching properties", err);
+      alert("Error fetching properties. Please check your credentials.");
     }
-    if (query) {
-      rules = rules.filter(rule => rule.attributes && rule.attributes.name && rule.attributes.name.toLowerCase().includes(query.toLowerCase()));
-    }
-    for (let rule of rules) {
-      rule.components = await fetchRuleComponents(rule.id);
-    }
-    const dataElements = await fetchAllDataElements(propertyId);
-    const extensions = await fetchExtensions(propertyId);
-    
-    const resultsDiv = document.getElementById('searchResults');
-    resultsDiv.innerHTML = "";
+  };
+  
+  // Render search results
+  const renderResults = (rules, dataElements, extensions, searchKeyword) => {
+    const resultsDiv = UIUtils.clearContainer('searchResults');
     if (rules.length > 0) {
       const rulesHeader = document.createElement('h3');
       rulesHeader.className = "text-xl font-bold bg-blue-100 p-2 rounded mb-4";
-      rulesHeader.innerText = "Rules:";
+      rulesHeader.textContent = "Rules:";
       resultsDiv.appendChild(rulesHeader);
+      renderRules(rules, searchKeyword, resultsDiv);
     }
-    renderDetailsResults(rules, query);
-    renderPropertyDetails(dataElements, extensions, query);
-  } catch (error) {
-    console.error("Error in Get Details:", error);
-    alert("An error occurred while fetching details. Please check the console for more information.");
-  } finally {
-    showLoading(false);
-  }
-});
-
-// API fetching functions for rules, data elements, components, and extensions
-async function fetchAllRules(propertyId) {
-  let rules = [];
-  let pageNumber = 1;
-  let totalPages = 1;
-  do {
-    const url = `https://reactor.adobe.io/properties/${propertyId}/rules?page[size]=100&page[number]=${pageNumber}`;
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Authorization": "Bearer " + config.accessToken,
-        "x-api-key": config.clientId,
-        "x-gw-ims-org-id": config.orgId,
-        "Content-Type": "application/vnd.api+json",
-        "Accept": "application/vnd.api+json;revision=1"
+    renderPropertyDetails(dataElements, extensions, searchKeyword, resultsDiv);
+  };
+  
+  // Render rules details
+  const renderRules = (rules, searchKeyword, container) => {
+    let serial = 1;
+    rules.forEach(rule => {
+      const ruleName = rule.attributes.name || "Unnamed Rule";
+      const rev = rule.meta && rule.meta.latest_revision_number 
+        ? rule.meta.latest_revision_number 
+        : (rule.attributes.latest_revision || "N/A");
+      const published = rule.attributes.published ? "Published" : "Not Published";
+      const enabled = rule.attributes.enabled ? "Enabled" : "Not Enabled";
+      const detailsSpan = document.createElement('span');
+      detailsSpan.className = "text-sm text-gray-500";
+      detailsSpan.textContent = `(Rev: ${rev}, ${published}, ${enabled})`;
+      const contentDiv = document.createElement('div');
+      if (UIUtils.showAttributesEnabled() && rule.attributes) {
+        contentDiv.appendChild(UIUtils.renderAttributesTable(rule.attributes));
       }
-    });
-    const data = await response.json();
-    if (data.data) {
-      rules = rules.concat(data.data);
-    }
-    if (data.meta && data.meta.pagination) {
-      totalPages = data.meta.pagination.total_pages;
-    }
-    pageNumber++;
-  } while (pageNumber <= totalPages);
-  return rules;
-}
-
-async function fetchAllDataElements(propertyId) {
-  let dataElements = [];
-  let pageNumber = 1;
-  let totalPages = 1;
-  do {
-    const url = `https://reactor.adobe.io/properties/${propertyId}/data_elements?page[size]=100&page[number]=${pageNumber}`;
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Authorization": "Bearer " + config.accessToken,
-        "x-api-key": config.clientId,
-        "x-gw-ims-org-id": config.orgId,
-        "Content-Type": "application/vnd.api+json",
-        "Accept": "application/vnd.api+json;revision=1"
+      if (rule.attributes && rule.attributes.settings) {
+        const settingsSection = UIUtils.createSection("Settings:");
+        settingsSection.appendChild(UIUtils.createCodeBlock(rule.attributes.settings));
+        contentDiv.appendChild(settingsSection);
       }
+      if (rule.components && rule.components.length > 0) {
+        const componentsSection = UIUtils.createSection("Rule Components:");
+        rule.components.forEach(comp => {
+          const compItem = document.createElement('div');
+          compItem.className = "mb-2 p-2 pl-4 border rounded component-bg";
+          if (UIUtils.showAttributesEnabled() && comp.attributes) {
+            compItem.appendChild(UIUtils.renderAttributesTable(comp.attributes));
+          }
+          if (comp.attributes && comp.attributes.name) {
+            const compTitle = document.createElement('h4');
+            compTitle.className = "text-base font-medium mb-1";
+            compTitle.textContent = comp.attributes.name;
+            compItem.insertBefore(compTitle, compItem.firstChild);
+          }
+          if (comp.attributes && comp.attributes.settings) {
+            let settingsTitle = "Settings";
+            if (comp.attributes.delegate_descriptor_id) {
+              settingsTitle += ` [${comp.attributes.delegate_descriptor_id}]`;
+            }
+            const settingsHeader = document.createElement('h3');
+            settingsHeader.className = "text-lg font-bold p-2 rounded mt-2 mb-2";
+            settingsHeader.textContent = settingsTitle;
+            compItem.appendChild(settingsHeader);
+            compItem.appendChild(UIUtils.createCodeBlock(comp.attributes.settings));
+          }
+          componentsSection.appendChild(compItem);
+        });
+        contentDiv.appendChild(componentsSection);
+      }
+      const title = `<span class="mr-2">${serial++}.</span> ${ruleName}`;
+      const accordionItem = UIUtils.createAccordionItem(rule, {
+        title,
+        subtitle: detailsSpan.outerHTML,
+        searchKeyword,
+        content: contentDiv
+      });
+      container.appendChild(accordionItem);
     });
-    const data = await response.json();
-    if (data.data) {
-      dataElements = dataElements.concat(data.data);
+  };
+  
+  // Render data elements and extensions
+  const renderPropertyDetails = (dataElements, extensions, searchKeyword, container) => {
+    if (dataElements.length > 0) {
+      const deHeader = document.createElement('h3');
+      deHeader.className = "text-xl font-bold bg-blue-100 p-2 rounded mt-6 mb-2";
+      deHeader.textContent = "Data Elements:";
+      container.appendChild(deHeader);
+      dataElements.forEach(de => {
+        const deName = de.attributes.name || "Unnamed Data Element";
+        const rev = de.meta && de.meta.latest_revision_number 
+          ? de.meta.latest_revision_number 
+          : (de.attributes.latest_revision || "N/A");
+        const published = de.attributes.published ? "Published" : "Not Published";
+        const enabled = de.attributes.enabled ? "Enabled" : "Not Enabled";
+        const detailsSpan = document.createElement('span');
+        detailsSpan.className = "text-sm text-gray-500";
+        detailsSpan.textContent = `(Rev: ${rev}, ${published}, ${enabled})`;
+        const contentDiv = document.createElement('div');
+        if (UIUtils.showAttributesEnabled() && de.attributes) {
+          contentDiv.appendChild(UIUtils.renderAttributesTable(de.attributes));
+        }
+        if (de.attributes.settings) {
+          const settingsSection = UIUtils.createSection("Settings:");
+          if (
+            de.type === "data_elements" &&
+            de.attributes.delegate_descriptor_id === "adobe-alloy::dataElements::xdm-object"
+          ) {
+            try {
+              const jsonObj = typeof de.attributes.settings === "string" 
+                ? JSON.parse(de.attributes.settings) 
+                : de.attributes.settings;
+              contentDiv.appendChild(UIUtils.createCodeBlock(JSON.stringify(jsonObj, null, 2), 'json'));
+            } catch (e) {
+              contentDiv.appendChild(UIUtils.createCodeBlock(de.attributes.settings));
+            }
+          } else {
+            contentDiv.appendChild(UIUtils.createCodeBlock(de.attributes.settings));
+          }
+          contentDiv.appendChild(settingsSection);
+        }
+        const accordionItem = UIUtils.createAccordionItem(de, {
+          title: deName,
+          subtitle: detailsSpan.outerHTML,
+          searchKeyword,
+          content: contentDiv
+        });
+        container.appendChild(accordionItem);
+      });
     }
-    if (data.meta && data.meta.pagination) {
-      totalPages = data.meta.pagination.total_pages;
+    if (extensions.length > 0) {
+      const extHeader = document.createElement('h3');
+      extHeader.className = "text-xl font-bold bg-blue-100 p-2 rounded mt-6 mb-2";
+      extHeader.textContent = "Extensions:";
+      container.appendChild(extHeader);
+      extensions.forEach(ext => {
+        const extName = ext.attributes.display_name || "Unnamed Extension";
+        const rev = ext.meta && ext.meta.latest_revision_number 
+          ? ext.meta.latest_revision_number 
+          : (ext.attributes.latest_revision || "N/A");
+        const published = ext.attributes.published ? "Published" : "Not Published";
+        const enabled = ext.attributes.enabled ? "Enabled" : "Not Enabled";
+        const detailsSpan = document.createElement('span');
+        detailsSpan.className = "text-sm text-gray-500";
+        detailsSpan.textContent = `(Rev: ${rev}, ${published}, ${enabled})`;
+        const contentDiv = document.createElement('div');
+        if (UIUtils.showAttributesEnabled() && ext.attributes) {
+          contentDiv.appendChild(UIUtils.renderAttributesTable(ext.attributes));
+        }
+        if (ext.attributes.settings) {
+          let settingsTitle = "Settings";
+          if (ext.attributes.delegate_descriptor_id) {
+            settingsTitle += ` [${ext.attributes.delegate_descriptor_id}]`;
+          }
+          const settingsSection = UIUtils.createSection(settingsTitle);
+          settingsSection.appendChild(UIUtils.createCodeBlock(ext.attributes.settings));
+          contentDiv.appendChild(settingsSection);
+        }
+        const accordionItem = UIUtils.createAccordionItem(ext, {
+          title: extName,
+          subtitle: detailsSpan.outerHTML,
+          searchKeyword,
+          content: contentDiv
+        });
+        container.appendChild(accordionItem);
+      });
     }
-    pageNumber++;
-  } while (pageNumber <= totalPages);
-  return dataElements;
-}
+  };
+  
+  return {
+    init
+  };
+})();
 
-async function fetchRuleComponents(ruleId) {
-  const url = `https://reactor.adobe.io/rules/${ruleId}/rule_components`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Authorization": "Bearer " + config.accessToken,
-      "x-api-key": config.clientId,
-      "x-gw-ims-org-id": config.orgId,
-      "Content-Type": "application/vnd.api+json",
-      "Accept": "application/vnd.api+json;revision=1"
-    }
-  });
-  const data = await response.json();
-  return data.data || [];
-}
-
-async function fetchExtensions(propertyId) {
-  const url = `https://reactor.adobe.io/properties/${propertyId}/extensions`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Authorization": "Bearer " + config.accessToken,
-      "x-api-key": config.clientId,
-      "x-gw-ims-org-id": config.orgId,
-      "Content-Type": "application/vnd.api+json",
-      "Accept": "application/vnd.api+json;revision=1"
-    }
-  });
-  const data = await response.json();
-  return data.data || [];
-}
+// Initialize the application when the DOM is ready
+document.addEventListener('DOMContentLoaded', AppController.init);
