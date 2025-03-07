@@ -504,8 +504,8 @@ const AppController = (function() {
       const published = rule.attributes.published ? "Published" : "Not Published";
       const enabled = rule.attributes.enabled ? "Enabled" : "Not Enabled";
       const detailsSpan = document.createElement('span');
-      detailsSpan.className = "text-sm text-gray-500";
-      detailsSpan.textContent = `(Rev: ${rev}, ${published}, ${enabled})`;
+      detailsSpan.className = "inline-block text-gray-400 bg-gray-100 font-normal rounded-3xl px-5 py-1 text-sm mr-1";
+      detailsSpan.textContent = `Rev: ${rev} -- ${published} -- ${enabled}`;
       const contentDiv = document.createElement('div');
       if (UIUtils.showAttributesEnabled() && rule.attributes) {
         contentDiv.appendChild(UIUtils.renderAttributesTable(rule.attributes));
@@ -589,8 +589,8 @@ const AppController = (function() {
         const published = de.attributes.published ? "Published" : "Not Published";
         const enabled = de.attributes.enabled ? "Enabled" : "Not Enabled";
         const detailsSpan = document.createElement('span');
-        detailsSpan.className = "text-sm text-gray-500";
-        detailsSpan.textContent = `(Rev: ${rev}, ${published}, ${enabled})`;
+        detailsSpan.className = "inline-block text-gray-400 bg-gray-100 font-normal rounded-3xl px-5 py-1 text-sm mr-1";
+        detailsSpan.textContent = `Rev: ${rev} -- ${published} -- ${enabled}`;
         const contentDiv = document.createElement('div');
         if (UIUtils.showAttributesEnabled() && de.attributes) {
           contentDiv.appendChild(UIUtils.renderAttributesTable(de.attributes));
@@ -636,8 +636,8 @@ const AppController = (function() {
         const published = ext.attributes.published ? "Published" : "Not Published";
         const enabled = ext.attributes.enabled ? "Enabled" : "Not Enabled";
         const detailsSpan = document.createElement('span');
-        detailsSpan.className = "text-sm text-gray-500";
-        detailsSpan.textContent = `(Rev: ${rev}, ${published}, ${enabled})`;
+        detailsSpan.className = "inline-block text-gray-400 bg-gray-100 font-normal rounded-3xl px-5 py-1 text-sm mr-1";
+        detailsSpan.textContent = `Rev: ${rev} -- ${published} -- ${enabled}`;
         const contentDiv = document.createElement('div');
         if (UIUtils.showAttributesEnabled() && ext.attributes) {
           contentDiv.appendChild(UIUtils.renderAttributesTable(ext.attributes));
