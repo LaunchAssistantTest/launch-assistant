@@ -589,8 +589,14 @@ const AppController = (function() {
         const published = de.attributes.published ? "Published" : "Not Published";
         const enabled = de.attributes.enabled ? "Enabled" : "Not Enabled";
         const detailsSpan = document.createElement('span');
-        detailsSpan.className = "inline-block text-gray-400 bg-gray-100 font-normal rounded-3xl px-5 py-1 text-sm mr-1";
-        detailsSpan.textContent = `Rev: ${rev} -- ${published} -- ${enabled}`;
+        
+        detailsSpan.textContent = `Rev: ${rev} --- ${published} --- ${enabled}`;
+        if(detailsSpan.textContent.match(/not published/ig)){
+          detailsSpan.className = "inline-block text-orange-400 bg-gray-100 font-normal rounded-3xl px-5 py-1 text-sm mr-1";
+        } else {
+          detailsSpan.className = "inline-block text-gray-400 bg-gray-100 font-normal rounded-3xl px-5 py-1 text-sm mr-1";
+        }
+        
         const contentDiv = document.createElement('div');
         if (UIUtils.showAttributesEnabled() && de.attributes) {
           contentDiv.appendChild(UIUtils.renderAttributesTable(de.attributes));
