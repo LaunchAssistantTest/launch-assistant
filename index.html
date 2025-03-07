@@ -20,8 +20,8 @@
     </h1>
     
     <!-- Configuration Accordion -->
-    <div id="configAccordion" class="mb-6 border rounded shadow bg-white">
-      <button id="configHeader" class="flex w-full items-center justify-between p-4 bg-gray-200 cursor-pointer" aria-expanded="true">
+    <div id="configAccordion" class="mb-6 border rounded-xl shadow bg-white">
+      <button id="configHeader" class="flex w-full rounded-xl items-center justify-between p-4 bg-gray-200 cursor-pointer" aria-expanded="true">
         <span class="text-lg font-semibold"><i class="fa fa-cog mr-2"></i>Configuration</span>
         <span id="configToggleIcon"><i class="fa fa-chevron-down"></i></span>
       </button>
@@ -42,7 +42,7 @@
           <label class="block text-sm font-medium">Client Secret:</label>
           <input type="password" id="clientSecret" class="mt-1 block w-full p-2 border rounded" placeholder="Enter your Client Secret">
         </div>
-        <button id="updateSettings" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded">Update Settings</button>
+        <button id="updateSettings" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-3xl">Update Settings</button>
         <div id="settingsMessage" class="mt-2 text-green-600"></div>
       </div>
     </div>
@@ -55,13 +55,13 @@
       <div class="flex flex-wrap gap-4 mb-6">
         <div>
           <label class="block font-medium">Company:</label>
-          <select id="companySelect" class="mt-1 block w-64 p-2 border rounded">
+          <select id="companySelect" class="mt-1 block w-64 p-2 border rounded-lg">
             <option value="">Select Company</option>
           </select>
         </div>
         <div>
           <label class="block font-medium">Properties:</label>
-          <select id="propertySelect" class="mt-1 block w-64 p-2 border rounded">
+          <select id="propertySelect" class="mt-1 block w-64 p-2 border rounded-lg">
             <option value="">Select Property</option>
           </select>
         </div>
@@ -107,14 +107,14 @@
         </div>
         <div class="flex items-center justify-between mb-4">
           <div class="flex space-x-4">
-            <button id="searchBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded">Search</button>
-            <button id="getDetailsBtn" class="bg-blue-900 hover:bg-blue-950 text-white font-medium py-2 px-4 rounded">Get Details</button>
+            <button id="searchBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-3xl">Search</button>
+            <button id="getDetailsBtn" class="bg-blue-900 hover:bg-blue-950 text-white font-medium py-2 px-4 rounded-3xl">Get Details</button>
           </div>
                   <!-- Loading Indicator -->
         <div id="loadingIndicator" class="hidden text-left text-xl text-green-500 mb-4">
           <i class="fa fa-spinner fa-spin"></i> Loading...
         </div>
-          <button id="toggleAll" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded">Expand All</button>
+          <button id="toggleAll" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-3xl">Expand All</button>
         </div>
 
         <!-- Dynamic Results -->
