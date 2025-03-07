@@ -304,6 +304,21 @@ const AppController = (function() {
     document.getElementById('searchBtn').addEventListener('click', handleSearch);
     document.getElementById('getDetailsBtn').addEventListener('click', handleGetDetails);
   };
+
+    document.getElementById('searchQuery').addEventListener('keydown', (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        const query = e.target.value.trim();
+        if (query !== "") {
+          handleSearch();
+        } else {
+          handleGetDetails();
+        }
+      }
+    });
+
+
+
   
   const updateSettings = async () => {
     const messageEl = document.getElementById('settingsMessage');
