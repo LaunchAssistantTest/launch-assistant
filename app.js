@@ -99,22 +99,18 @@ const APIService = (function() {
     do {
       const paginatedEndpoint = `${endpoint}${endpoint.includes('?') ? '&' : '?'}page[size]=100&page[number]=${pageNumber}`;
       const data = await fetchAPI(paginatedEndpoint);
-      
       if (data.data) {
         results = results.concat(data.data);
       }
-      
       if (data.meta && data.meta.pagination) {
         totalPages = data.meta.pagination.total_pages;
       }
-      
       pageNumber++;
     } while (pageNumber <= totalPages);
     
     return results;
   };
 
-  // API methods for specific endpoints
   return {
     getCompanies: () => fetchAPI("/companies"),
     getProperties: (companyId) => fetchAPI(`/companies/${companyId}/properties`),
@@ -148,14 +144,14 @@ const UIUtils = (function() {
     return text.replace(regex, `<span class="highlight">$1</span>`);
   };
 
-  // Toggle accordion sections
+  // Toggle accordion sections (updates only one icon)
   const toggleAccordion = (header, content, icon) => {
     const isExpanded = header.getAttribute('aria-expanded') === "true";
     header.setAttribute('aria-expanded', !isExpanded);
     content.style.display = isExpanded ? "none" : "block";
-    icon.innerHTML = isExpanded 
-      ? `<i class="fa fa-chevron-down"></i>` 
-      : `<i class="fa fa-chevron-up"></i>`;
+    icon.innerHTML = !isExpanded 
+      ? `<i class="fa fa-chevron-up"></i>` 
+      : `<i class="fa fa-chevron-down"></i>`;
   };
 
   // Create accordion items for rules, data elements, etc.
@@ -164,9 +160,8 @@ const UIUtils = (function() {
     const accordionItem = document.createElement('div');
     accordionItem.className = "accordion-item mb-4 p-2 border rounded bg-white";
     
-    // Create header with title and toggle icon
     const header = document.createElement('div');
-    header.className = "accordion-header flex justify-between items-center font-semibold text-lg";
+    header.className = "accordion-header px-2 flex justify-between items-center font-semibold text-lg";
     header.setAttribute("role", "button");
     header.setAttribute("aria-expanded", "false");
     
@@ -180,7 +175,6 @@ const UIUtils = (function() {
     header.appendChild(headerLeft);
     header.appendChild(headerRight);
     
-    // Create content container
     const contentContainer = document.createElement('div');
     contentContainer.className = "accordion-content";
     contentContainer.style.display = "none";
@@ -189,14 +183,8 @@ const UIUtils = (function() {
       contentContainer.appendChild(content);
     }
     
-    // Add toggle event listener
     header.addEventListener('click', () => {
-      const isExpanded = contentContainer.style.display === "block";
-      contentContainer.style.display = isExpanded ? "none" : "block";
-      header.setAttribute("aria-expanded", !isExpanded);
-      headerRight.innerHTML = isExpanded 
-        ? `<i class="fa fa-plus"></i>` 
-        : `<i class="fa fa-minus"></i>`;
+      toggleAccordion(header, contentContainer, headerRight);
     });
     
     accordionItem.appendChild(header);
@@ -233,11 +221,9 @@ const UIUtils = (function() {
   // Create a titled section
   const createSection = (title, className = "") => {
     const section = document.createElement('div');
-    if (className) {
-      section.className = className;
-    }
+    if (className) { section.className = className; }
     const heading = document.createElement('h3');
-    heading.className = "text-lg font-bold bg-blue-100 p-2 rounded mt-4 mb-2";
+    heading.className = "text-lg font-medium bg-gray-100 p-2 rounded mt-4 mb-2";
     heading.textContent = title;
     section.appendChild(heading);
     return section;
@@ -266,9 +252,7 @@ const UIUtils = (function() {
   // Clear UI container
   const clearContainer = (containerId) => {
     const container = document.getElementById(containerId);
-    if (container) {
-      container.innerHTML = '';
-    }
+    if (container) { container.innerHTML = ''; }
     return container;
   };
 
@@ -288,14 +272,12 @@ const UIUtils = (function() {
 
 // Controller for handling the app's business logic
 const AppController = (function() {
-  // Initialize the application
   const init = () => {
     attachEventListeners();
     ConfigManager.loadStoredSettings();
     setupUIState();
   };
   
-  // Set up initial UI state
   const setupUIState = () => {
     const tabButtons = document.querySelectorAll('.tab-btn');
     tabButtons[0].classList.add('active');
@@ -305,7 +287,6 @@ const AppController = (function() {
     }
   };
   
-  // Attach all event listeners
   const attachEventListeners = () => {
     const configHeader = document.getElementById('configHeader');
     const configContent = document.getElementById('configContent');
@@ -331,26 +312,31 @@ const AppController = (function() {
       messageEl.textContent = "Settings updated successfully!";
       messageEl.className = "mt-2 text-green-600";
       await fetchCompanies();
+      collapseConfigurationAccordion();
     } else {
       messageEl.textContent = "Please fill in all fields.";
       messageEl.className = "mt-2 text-red-600";
     }
   };
   
+  const collapseConfigurationAccordion = () => {
+    const configContent = document.getElementById('configContent');
+    const configToggleIcon = document.getElementById('configToggleIcon');
+    configContent.style.display = "none";
+    document.getElementById('configHeader').setAttribute("aria-expanded", "false");
+    configToggleIcon.innerHTML = `<i class="fa fa-chevron-down"></i>`;
+  };
+  
   const handleCompanySelection = function() {
     const companyId = this.value;
-    if (companyId) {
-      fetchPropertiesForCompany(companyId);
-    }
+    if (companyId) { fetchPropertiesForCompany(companyId); }
   };
   
   const handleTabSwitch = function() {
     const tabName = this.getAttribute('data-tab');
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.style.display = 'none';
-    });
+    document.querySelectorAll('.tab').forEach(tab => { tab.style.display = 'none'; });
     document.getElementById(tabName).style.display = 'block';
   };
   
@@ -358,9 +344,7 @@ const AppController = (function() {
     const contents = document.querySelectorAll('.accordion-content');
     const toggleButton = this;
     const allExpanded = toggleButton.textContent === "Collapse All";
-    contents.forEach(content => {
-      content.style.display = allExpanded ? "none" : "block";
-    });
+    contents.forEach(content => { content.style.display = allExpanded ? "none" : "block"; });
     toggleButton.textContent = allExpanded ? "Expand All" : "Collapse All";
   };
   
@@ -457,8 +441,6 @@ const AppController = (function() {
         });
       }
       document.getElementById("mainApp").classList.remove("hidden");
-      document.getElementById('configHeader').click()
-
     } catch (err) {
       console.error("Error fetching companies", err);
       document.getElementById("settingsMessage").textContent = "Error fetching companies. Check your credentials.";
@@ -485,7 +467,6 @@ const AppController = (function() {
     }
   };
   
-  // Render search results
   const renderResults = (rules, dataElements, extensions, searchKeyword) => {
     const resultsDiv = UIUtils.clearContainer('searchResults');
     if (rules.length > 0) {
@@ -498,7 +479,6 @@ const AppController = (function() {
     renderPropertyDetails(dataElements, extensions, searchKeyword, resultsDiv);
   };
   
-  // Render rules details
   const renderRules = (rules, searchKeyword, container) => {
     let serial = 1;
     rules.forEach(rule => {
@@ -521,35 +501,55 @@ const AppController = (function() {
         contentDiv.appendChild(settingsSection);
       }
       if (rule.components && rule.components.length > 0) {
-        const componentsSection = UIUtils.createSection("Rule Components:");
+        // Group rule components by delegate_descriptor_id type
+        const groups = { events: [], conditions: [], actions: [] };
         rule.components.forEach(comp => {
-          const compItem = document.createElement('div');
-          compItem.className = "mb-2 p-2 pl-4 border rounded component-bg";
-          if (UIUtils.showAttributesEnabled() && comp.attributes) {
-            compItem.appendChild(UIUtils.renderAttributesTable(comp.attributes));
+          const ddid = comp.attributes.delegate_descriptor_id || "";
+          if (ddid.includes("::events::")) {
+            groups.events.push(comp);
+          } else if (ddid.includes("::conditions::")) {
+            groups.conditions.push(comp);
+          } else if (ddid.includes("::actions::")) {
+            groups.actions.push(comp);
+          } else {
+            groups.conditions.push(comp);
           }
-          if (comp.attributes && comp.attributes.name) {
-            const compTitle = document.createElement('h4');
-            compTitle.className = "text-base font-medium mb-1";
-            compTitle.textContent = comp.attributes.name;
-            compItem.insertBefore(compTitle, compItem.firstChild);
+        });
+        const componentsSection = UIUtils.createSection("Rule Components:");
+        // Render groups in fixed order
+        ["events", "conditions", "actions"].forEach(groupName => {
+          if (groups[groupName].length > 0) {
+            // Use the first component's delegate_descriptor_id to generate title tiles
+            let rawTitle = groups[groupName][0].attributes.delegate_descriptor_id;
+            let cleanedTitle = rawTitle.replace(/::/g, " ");
+            const words = cleanedTitle.split(" ").filter(word => word.trim() !== "");
+            const titleHTML = words.map(word => `<span class="inline-block bg-gray-300 font-medium rounded px-2 py-1.5 text-sm mr-1">${word}</span>`).join("");
+            const groupHeader = document.createElement('h3');
+            groupHeader.className = "text-lg font-bold bg-white-200 p-2 rounded mt-4 mb-2";
+            groupHeader.innerHTML = titleHTML;
+            componentsSection.appendChild(groupHeader);
+            // Render each component in the group
+            groups[groupName].forEach(comp => {
+              const compItem = document.createElement('div');
+              compItem.className = "mb-2 p-2 pl-4 border rounded component-bg";
+              if (UIUtils.showAttributesEnabled() && comp.attributes) {
+                compItem.appendChild(UIUtils.renderAttributesTable(comp.attributes));
+              }
+
+              if (comp.attributes && comp.attributes.settings) {
+
+                compItem.appendChild(UIUtils.createCodeBlock(JSON.stringify(JSON.parse(comp.attributes.settings), null, 2)));
+              } //JSON.stringify(comp.attributes.settings, null, 2), 'json')
+              
+              componentsSection.appendChild(compItem);
+              
+            });
           }
-          if (comp.attributes && comp.attributes.settings) {
-            let settingsTitle = "Settings";
-            if (comp.attributes.delegate_descriptor_id) {
-              settingsTitle += ` [${comp.attributes.delegate_descriptor_id}]`;
-            }
-            const settingsHeader = document.createElement('h3');
-            settingsHeader.className = "text-lg font-bold p-2 rounded mt-2 mb-2";
-            settingsHeader.textContent = settingsTitle;
-            compItem.appendChild(settingsHeader);
-            compItem.appendChild(UIUtils.createCodeBlock(comp.attributes.settings));
-          }
-          componentsSection.appendChild(compItem);
         });
         contentDiv.appendChild(componentsSection);
       }
-      const title = `<span class="mr-2">${serial++}.</span> ${ruleName}`;
+      //const title = `<span class="mr-2">${serial++}.</span> ${ruleName}`;
+      const title = `${ruleName}`;
       const accordionItem = UIUtils.createAccordionItem(rule, {
         title,
         subtitle: detailsSpan.outerHTML,
@@ -560,7 +560,6 @@ const AppController = (function() {
     });
   };
   
-  // Render data elements and extensions
   const renderPropertyDetails = (dataElements, extensions, searchKeyword, container) => {
     if (dataElements.length > 0) {
       const deHeader = document.createElement('h3');
@@ -598,7 +597,7 @@ const AppController = (function() {
           } else {
             contentDiv.appendChild(UIUtils.createCodeBlock(de.attributes.settings));
           }
-          contentDiv.appendChild(settingsSection);
+          
         }
         const accordionItem = UIUtils.createAccordionItem(de, {
           title: deName,
@@ -631,7 +630,7 @@ const AppController = (function() {
         if (ext.attributes.settings) {
           let settingsTitle = "Settings";
           if (ext.attributes.delegate_descriptor_id) {
-            settingsTitle += ` [${ext.attributes.delegate_descriptor_id}]`;
+            //settingsTitle += ` [${ext.attributes.delegate_descriptor_id}]`;
           }
           const settingsSection = UIUtils.createSection(settingsTitle);
           settingsSection.appendChild(UIUtils.createCodeBlock(ext.attributes.settings));
