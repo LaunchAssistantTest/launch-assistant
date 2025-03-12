@@ -69,10 +69,17 @@ const ConfigManager = (function() {
 // API service for handling all API requests
 const APIService = (function() {
   const API_BASE_URL = "https://reactor.adobe.io";
+  const cache = {};
 
-  // Generic fetch function with error handling
+  // Generic fetch function with caching and error handling
   const fetchAPI = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
+    const cacheKey = `${url}:${JSON.stringify(options)}`;
+    
+    if (cache[cacheKey]) {
+      return cache[cacheKey];
+    }
+
     const defaultOptions = {
       method: "GET",
       headers: ConfigManager.getAuthHeaders()
@@ -83,7 +90,9 @@ const APIService = (function() {
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
-      return await response.json();
+      const data = await response.json();
+      cache[cacheKey] = data;
+      return data;
     } catch (error) {
       console.error(`Error fetching ${url}:`, error);
       throw error;
