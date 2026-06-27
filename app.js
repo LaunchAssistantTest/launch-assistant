@@ -281,6 +281,12 @@ const UIUtils = (function() {
 
 // Controller for handling the app's business logic
 const AppController = (function() {
+  let latestResults = {
+    rules: [],
+    dataElements: [],
+    extensions: [],
+    searchKeyword: ""
+  };
   const init = () => {
     attachEventListeners();
     ConfigManager.loadStoredSettings();
@@ -312,6 +318,18 @@ const AppController = (function() {
     document.getElementById('toggleAll').addEventListener('click', toggleAllAccordions);
     document.getElementById('searchBtn').addEventListener('click', handleSearch);
     document.getElementById('getDetailsBtn').addEventListener('click', handleGetDetails);
+    document.getElementById('downloadExcelBtn').addEventListener('click', handleDownloadExcel);
+    document.getElementById('searchQuery').addEventListener('keydown', (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const query = e.target.value.trim();
+        if (query !== "") {
+          handleSearch();
+        } else {
+          handleGetDetails();
+        }
+      }
+    });
   };
 
     document.getElementById('searchQuery').addEventListener('keydown', (e) => {
@@ -442,15 +460,185 @@ const AppController = (function() {
       const dataElements = await APIService.getDataElements(propertyId);
       const extensionsData = await APIService.getExtensions(propertyId);
       const extensions = extensionsData.data || [];
+      latestResults = {
+        rules,
+        dataElements,
+        extensions,
+        searchKeyword: query
+      };
       renderResults(rules, dataElements, extensions, query);
+      toggleExcelDownloadButton(true);
     } catch (error) {
       console.error("Error in Get Details:", error);
       alert("An error occurred while fetching details. Please check the console for more information.");
+      toggleExcelDownloadButton(false);
     } finally {
       UIUtils.toggleLoading(false);
     }
   };
   
+  
+  const toggleExcelDownloadButton = (show) => {
+    const button = document.getElementById('downloadExcelBtn');
+    if (button) {
+      button.classList.toggle('hidden', !show);
+    }
+  };
+
+  const safeJsonParse = (value) => {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      return value;
+    }
+  };
+
+  const stringifyForExcel = (value) => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "object") {
+      return JSON.stringify(value, null, 2);
+    }
+    return value;
+  };
+
+  const getRevision = (item) => {
+    return item.meta && item.meta.latest_revision_number
+      ? item.meta.latest_revision_number
+      : (item.attributes && item.attributes.latest_revision ? item.attributes.latest_revision : "N/A");
+  };
+
+  const getDelegateType = (delegateDescriptorId = "") => {
+    if (delegateDescriptorId.includes("::events::")) return "Event";
+    if (delegateDescriptorId.includes("::conditions::")) return "Condition";
+    if (delegateDescriptorId.includes("::actions::")) return "Action";
+    if (delegateDescriptorId.includes("::dataElements::")) return "Data Element";
+    return delegateDescriptorId ? "Other" : "";
+  };
+
+  const buildRulesSheetRows = (rules) => {
+    return rules.map(rule => ({
+      "Rule ID": rule.id || "",
+      "Rule Name": rule.attributes && rule.attributes.name ? rule.attributes.name : "Unnamed Rule",
+      "Revision": getRevision(rule),
+      "Published": rule.attributes && rule.attributes.published ? "Yes" : "No",
+      "Enabled": rule.attributes && rule.attributes.enabled ? "Yes" : "No",
+      "Dirty": rule.attributes && rule.attributes.dirty ? "Yes" : "No",
+      "Created At": rule.attributes && rule.attributes.created_at ? rule.attributes.created_at : "",
+      "Updated At": rule.attributes && rule.attributes.updated_at ? rule.attributes.updated_at : "",
+      "Rule Settings": stringifyForExcel(safeJsonParse(rule.attributes && rule.attributes.settings)),
+      "Raw Attributes": stringifyForExcel(rule.attributes || {})
+    }));
+  };
+
+  const buildRuleComponentsSheetRows = (rules) => {
+    const rows = [];
+    rules.forEach(rule => {
+      const components = rule.components || [];
+      components.forEach(component => {
+        const delegateDescriptorId = component.attributes && component.attributes.delegate_descriptor_id ? component.attributes.delegate_descriptor_id : "";
+        rows.push({
+          "Rule ID": rule.id || "",
+          "Rule Name": rule.attributes && rule.attributes.name ? rule.attributes.name : "Unnamed Rule",
+          "Component ID": component.id || "",
+          "Component Name": component.attributes && component.attributes.name ? component.attributes.name : "",
+          "Component Type": getDelegateType(delegateDescriptorId),
+          "Delegate Descriptor ID": delegateDescriptorId,
+          "Order": component.attributes && component.attributes.order !== undefined ? component.attributes.order : "",
+          "Negate": component.attributes && component.attributes.negate ? "Yes" : "No",
+          "Timeout": component.attributes && component.attributes.timeout !== undefined ? component.attributes.timeout : "",
+          "Delay Next": component.attributes && component.attributes.delay_next ? "Yes" : "No",
+          "Settings": stringifyForExcel(safeJsonParse(component.attributes && component.attributes.settings)),
+          "Raw Attributes": stringifyForExcel(component.attributes || {})
+        });
+      });
+    });
+    return rows;
+  };
+
+  const buildDataElementsSheetRows = (dataElements) => {
+    return dataElements.map(dataElement => ({
+      "Data Element ID": dataElement.id || "",
+      "Data Element Name": dataElement.attributes && dataElement.attributes.name ? dataElement.attributes.name : "Unnamed Data Element",
+      "Revision": getRevision(dataElement),
+      "Published": dataElement.attributes && dataElement.attributes.published ? "Yes" : "No",
+      "Enabled": dataElement.attributes && dataElement.attributes.enabled ? "Yes" : "No",
+      "Delegate Descriptor ID": dataElement.attributes && dataElement.attributes.delegate_descriptor_id ? dataElement.attributes.delegate_descriptor_id : "",
+      "Default Value": stringifyForExcel(dataElement.attributes && dataElement.attributes.default_value),
+      "Force Lower Case": dataElement.attributes && dataElement.attributes.force_lower_case ? "Yes" : "No",
+      "Clean Text": dataElement.attributes && dataElement.attributes.clean_text ? "Yes" : "No",
+      "Storage Duration": dataElement.attributes && dataElement.attributes.storage_duration ? dataElement.attributes.storage_duration : "",
+      "Created At": dataElement.attributes && dataElement.attributes.created_at ? dataElement.attributes.created_at : "",
+      "Updated At": dataElement.attributes && dataElement.attributes.updated_at ? dataElement.attributes.updated_at : "",
+      "Settings": stringifyForExcel(safeJsonParse(dataElement.attributes && dataElement.attributes.settings)),
+      "Raw Attributes": stringifyForExcel(dataElement.attributes || {})
+    }));
+  };
+
+  const buildExtensionsSheetRows = (extensions) => {
+    return extensions.map(extension => ({
+      "Extension ID": extension.id || "",
+      "Extension Name": extension.attributes && extension.attributes.display_name ? extension.attributes.display_name : "Unnamed Extension",
+      "Name": extension.attributes && extension.attributes.name ? extension.attributes.name : "",
+      "Revision": getRevision(extension),
+      "Published": extension.attributes && extension.attributes.published ? "Yes" : "No",
+      "Enabled": extension.attributes && extension.attributes.enabled ? "Yes" : "No",
+      "Version": extension.attributes && extension.attributes.version ? extension.attributes.version : "",
+      "Delegate Descriptor ID": extension.attributes && extension.attributes.delegate_descriptor_id ? extension.attributes.delegate_descriptor_id : "",
+      "Created At": extension.attributes && extension.attributes.created_at ? extension.attributes.created_at : "",
+      "Updated At": extension.attributes && extension.attributes.updated_at ? extension.attributes.updated_at : "",
+      "Settings": stringifyForExcel(safeJsonParse(extension.attributes && extension.attributes.settings)),
+      "Raw Attributes": stringifyForExcel(extension.attributes || {})
+    }));
+  };
+
+  const autoSizeColumns = (worksheet, rows) => {
+    if (!rows.length) return;
+    const columns = Object.keys(rows[0]);
+    worksheet['!cols'] = columns.map(column => {
+      const maxLength = rows.reduce((max, row) => {
+        const value = row[column] === null || row[column] === undefined ? "" : String(row[column]);
+        return Math.max(max, value.length);
+      }, column.length);
+      return { wch: Math.min(Math.max(maxLength + 2, 12), 80) };
+    });
+  };
+
+  const addSheet = (workbook, sheetName, rows) => {
+    const worksheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ "Message": "No records found" }]);
+    autoSizeColumns(worksheet, rows.length ? rows : [{ "Message": "No records found" }]);
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  };
+
+  const handleDownloadExcel = () => {
+    if (typeof XLSX === "undefined") {
+      alert("Excel export library is not loaded. Please check your internet connection and refresh the page.");
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+    const ruleComponentRows = buildRuleComponentsSheetRows(latestResults.rules);
+
+    addSheet(workbook, "Summary", [{
+      "Exported At": new Date().toISOString(),
+      "Company": document.getElementById('companySelect')?.selectedOptions[0]?.text || "",
+      "Property": document.getElementById('propertySelect')?.selectedOptions[0]?.text || "",
+      "Search Keyword": latestResults.searchKeyword || "",
+      "Rules Count": latestResults.rules.length,
+      "Rule Components Count": ruleComponentRows.length,
+      "Data Elements Count": latestResults.dataElements.length,
+      "Extensions Count": latestResults.extensions.length
+    }]);
+    addSheet(workbook, "Rules", buildRulesSheetRows(latestResults.rules));
+    addSheet(workbook, "Rule Components", ruleComponentRows);
+    addSheet(workbook, "Data Elements", buildDataElementsSheetRows(latestResults.dataElements));
+    addSheet(workbook, "Extensions", buildExtensionsSheetRows(latestResults.extensions));
+
+    const selectedProperty = document.getElementById('propertySelect')?.selectedOptions[0]?.text || "launch_property";
+    const safePropertyName = selectedProperty.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'launch_property';
+    XLSX.writeFile(workbook, `launch-assistant-${safePropertyName}-${Date.now()}.xlsx`);
+  };
+
   const fetchCompanies = async () => {
     try {
       const data = await APIService.getCompanies();
@@ -562,7 +750,11 @@ const AppController = (function() {
 
               if (comp.attributes && comp.attributes.settings) {
 
-                compItem.appendChild(UIUtils.createCodeBlock(JSON.stringify(JSON.parse(comp.attributes.settings), null, 2)));
+                try {
+                  compItem.appendChild(UIUtils.createCodeBlock(JSON.stringify(JSON.parse(comp.attributes.settings), null, 2)));
+                } catch (error) {
+                  compItem.appendChild(UIUtils.createCodeBlock(comp.attributes.settings));
+                }
               } //JSON.stringify(comp.attributes.settings, null, 2), 'json')
               
               componentsSection.appendChild(compItem);
