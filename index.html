@@ -7,6 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <!-- Custom CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -109,6 +111,7 @@
           <div class="flex space-x-4">
             <button id="searchBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-3xl">Search</button>
             <button id="getDetailsBtn" class="bg-blue-900 hover:bg-blue-950 text-white font-medium py-2 px-4 rounded-3xl">Get Details</button>
+            <button id="downloadExcelBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-3xl hidden">Download Excel</button>
           </div>
                   <!-- Loading Indicator -->
         <div id="loadingIndicator" class="hidden text-left text-xl text-green-500 mb-4">
