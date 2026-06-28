@@ -502,6 +502,41 @@ const AppController = (function() {
     return value;
   };
 
+  const normalizeExcelValue = (value) => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "object") return JSON.stringify(value, null, 2);
+    return value;
+  };
+
+  const extractComponentSettingValues = (settings) => {
+    const normalized = typeof settings === "string" ? safeJsonParse(settings) : settings;
+    if (!normalized || typeof normalized !== "object") return {};
+
+    const getComparisonValue = (prop) => {
+      const comparison = normalized.comparison || {};
+      return comparison[prop] || comparison[prop.replace(/([A-Z])/g, '_$1').toLowerCase()];
+    };
+
+    return {
+      "Source": normalizeExcelValue(normalized.source),
+      "Element Selector": normalizeExcelValue(normalized.elementSelector || normalized.element_selector),
+      "Anchor Delay": normalizeExcelValue(normalized.anchorDelay || normalized.anchor_delay),
+      "Bubble Fire If Parent": normalizeExcelValue(normalized.bubbleFireIfParent),
+      "Bubble Fire If Child Fired": normalizeExcelValue(normalized.bubbleFireIfChildFired),
+      "Language": normalizeExcelValue(normalized.language),
+      "Domains": normalizeExcelValue(normalized.domains || normalized.domain),
+      "Comparison Operator": normalizeExcelValue(getComparisonValue('operator')),
+      "Comparison Left Operand": normalizeExcelValue(getComparisonValue('leftOperand') || getComparisonValue('left_operand')),
+      "Comparison Right Operand": normalizeExcelValue(getComparisonValue('rightOperand') || getComparisonValue('right_operand')),
+      "Comparison Target": normalizeExcelValue(getComparisonValue('target')),
+      "Default Value": normalizeExcelValue(normalized.defaultValue || normalized.default_value),
+      "Force Lower Case": normalizeExcelValue(normalized.forceLowerCase || normalized.force_lower_case),
+      "Clean Text": normalizeExcelValue(normalized.cleanText || normalized.clean_text),
+      "Storage Duration": normalizeExcelValue(normalized.storageDuration || normalized.storage_duration),
+      "Settings": stringifyForExcel(normalized)
+    };
+  };
+
   const getRevision = (item) => {
     return item.meta && item.meta.latest_revision_number
       ? item.meta.latest_revision_number
@@ -536,20 +571,22 @@ const AppController = (function() {
     rules.forEach(rule => {
       const components = rule.components || [];
       components.forEach(component => {
-        const delegateDescriptorId = component.attributes && component.attributes.delegate_descriptor_id ? component.attributes.delegate_descriptor_id : "";
+        const attributes = component.attributes || {};
+        const delegateDescriptorId = attributes.delegate_descriptor_id || "";
+        const settingValues = extractComponentSettingValues(attributes.settings);
         rows.push({
           "Rule ID": rule.id || "",
           "Rule Name": rule.attributes && rule.attributes.name ? rule.attributes.name : "Unnamed Rule",
           "Component ID": component.id || "",
-          "Component Name": component.attributes && component.attributes.name ? component.attributes.name : "",
+          "Component Name": attributes.name || "",
           "Component Type": getDelegateType(delegateDescriptorId),
           "Delegate Descriptor ID": delegateDescriptorId,
-          "Order": component.attributes && component.attributes.order !== undefined ? component.attributes.order : "",
-          "Negate": component.attributes && component.attributes.negate ? "Yes" : "No",
-          "Timeout": component.attributes && component.attributes.timeout !== undefined ? component.attributes.timeout : "",
-          "Delay Next": component.attributes && component.attributes.delay_next ? "Yes" : "No",
-          "Settings": stringifyForExcel(safeJsonParse(component.attributes && component.attributes.settings)),
-          "Raw Attributes": stringifyForExcel(component.attributes || {})
+          "Component Order": attributes.order !== undefined ? attributes.order : "",
+          "Component Negate": attributes.negate ? "Yes" : "No",
+          "Component Timeout": attributes.timeout !== undefined ? attributes.timeout : "",
+          "Component Delay Next": attributes.delay_next ? "Yes" : "No",
+          ...settingValues,
+          "Raw Attributes": stringifyForExcel(attributes || {})
         });
       });
     });
