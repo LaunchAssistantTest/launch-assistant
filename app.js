@@ -494,18 +494,26 @@ const AppController = (function() {
     }
   };
 
+  const EXCEL_TEXT_LIMIT = 32767;
+
+  const truncateExcelText = (text) => {
+    if (typeof text !== "string") return text;
+    if (text.length <= EXCEL_TEXT_LIMIT) return text;
+    return `${text.slice(0, EXCEL_TEXT_LIMIT - 3)}...`;
+  };
+
   const stringifyForExcel = (value) => {
     if (value === null || value === undefined) return "";
     if (typeof value === "object") {
-      return JSON.stringify(value, null, 2);
+      return truncateExcelText(JSON.stringify(value, null, 2));
     }
-    return value;
+    return truncateExcelText(String(value));
   };
 
   const normalizeExcelValue = (value) => {
     if (value === null || value === undefined) return "";
-    if (typeof value === "object") return JSON.stringify(value, null, 2);
-    return value;
+    if (typeof value === "object") return truncateExcelText(JSON.stringify(value, null, 2));
+    return truncateExcelText(String(value));
   };
 
   const extractComponentSettingValues = (settings) => {
