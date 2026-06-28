@@ -559,46 +559,91 @@ const AppController = (function() {
     return delegateDescriptorId ? "Other" : "";
   };
 
-  const buildRulesSheetRows = (rules) => {
-    return rules.map(rule => ({
-      "Rule ID": rule.id || "",
-      "Rule Name": rule.attributes && rule.attributes.name ? rule.attributes.name : "Unnamed Rule",
-      "Revision": getRevision(rule),
-      "Published": rule.attributes && rule.attributes.published ? "Yes" : "No",
-      "Enabled": rule.attributes && rule.attributes.enabled ? "Yes" : "No",
-      "Dirty": rule.attributes && rule.attributes.dirty ? "Yes" : "No",
-      "Created At": rule.attributes && rule.attributes.created_at ? rule.attributes.created_at : "",
-      "Updated At": rule.attributes && rule.attributes.updated_at ? rule.attributes.updated_at : "",
-      "Rule Settings": stringifyForExcel(safeJsonParse(rule.attributes && rule.attributes.settings)),
-      "Raw Attributes": stringifyForExcel(rule.attributes || {})
-    }));
+  const getOrderedRuleComponents = (components = []) => {
+    return [...components].sort((a, b) => {
+      const aOrder = a.attributes && a.attributes.order !== undefined ? a.attributes.order : Number.MAX_SAFE_INTEGER;
+      const bOrder = b.attributes && b.attributes.order !== undefined ? b.attributes.order : Number.MAX_SAFE_INTEGER;
+      return aOrder - bOrder;
+    });
   };
 
-  const buildRuleComponentsSheetRows = (rules) => {
-    const rows = [];
-    rules.forEach(rule => {
-      const components = rule.components || [];
-      components.forEach(component => {
-        const attributes = component.attributes || {};
-        const delegateDescriptorId = attributes.delegate_descriptor_id || "";
-        const settingValues = extractComponentSettingValues(attributes.settings);
-        rows.push({
-          "Rule ID": rule.id || "",
-          "Rule Name": rule.attributes && rule.attributes.name ? rule.attributes.name : "Unnamed Rule",
-          "Component ID": component.id || "",
-          "Component Name": attributes.name || "",
-          "Component Type": getDelegateType(delegateDescriptorId),
-          "Delegate Descriptor ID": delegateDescriptorId,
-          "Component Order": attributes.order !== undefined ? attributes.order : "",
-          "Component Negate": attributes.negate ? "Yes" : "No",
-          "Component Timeout": attributes.timeout !== undefined ? attributes.timeout : "",
-          "Component Delay Next": attributes.delay_next ? "Yes" : "No",
-          ...settingValues,
-          "Raw Attributes": stringifyForExcel(attributes || {})
-        });
-      });
+  const getComponentDescriptor = (component) => {
+    const attributes = component.attributes || {};
+    return attributes.delegate_descriptor_id
+      ? attributes.delegate_descriptor_id.replace(/::/g, "-")
+      : "unknown-component";
+  };
+
+  const buildComponentDescriptorSummary = (components = []) => {
+    const counts = {};
+    getOrderedRuleComponents(components).forEach(component => {
+      const descriptor = getComponentDescriptor(component);
+      counts[descriptor] = (counts[descriptor] || 0) + 1;
     });
-    return rows;
+
+    return Object.keys(counts)
+      .map(descriptor => counts[descriptor] > 1 ? `${descriptor} (${counts[descriptor]})` : descriptor)
+      .join(", ");
+  };
+
+  const buildComponentValueText = (component, index) => {
+    const attributes = component.attributes || {};
+    const delegateDescriptorId = attributes.delegate_descriptor_id || "";
+    const descriptor = getComponentDescriptor(component);
+    const settingValues = extractComponentSettingValues(attributes.settings);
+    const lines = [
+      `${index + 1}. ${descriptor}`,
+      component.id ? `Component ID: ${component.id}` : "",
+      attributes.name ? `Component Name: ${attributes.name}` : "",
+      getDelegateType(delegateDescriptorId) ? `Component Type: ${getDelegateType(delegateDescriptorId)}` : "",
+      attributes.order !== undefined ? `Component Order: ${attributes.order}` : "",
+      attributes.negate ? "Component Negate: Yes" : "",
+      attributes.timeout !== undefined ? `Component Timeout: ${attributes.timeout}` : "",
+      attributes.delay_next ? "Component Delay Next: Yes" : ""
+    ].filter(Boolean);
+
+    Object.entries(settingValues).forEach(([key, value]) => {
+      if (key !== "Settings" && value !== "") {
+        lines.push(`${key}: ${value}`);
+      }
+    });
+
+    if (settingValues.Settings) {
+      lines.push(`Settings: ${settingValues.Settings}`);
+    }
+
+    return lines.join("\n");
+  };
+
+  const buildRuleComponentValues = (components = []) => {
+    return getOrderedRuleComponents(components)
+      .map((component, index) => buildComponentValueText(component, index))
+      .join("\n\n");
+  };
+
+  const countRuleComponents = (rules = []) => {
+    return rules.reduce((count, rule) => count + ((rule.components || []).length), 0);
+  };
+
+  const buildRulesSheetRows = (rules) => {
+    return rules.map(rule => {
+      const components = rule.components || [];
+      return {
+        "Rule ID": rule.id || "",
+        "Rule Name": rule.attributes && rule.attributes.name ? rule.attributes.name : "Unnamed Rule",
+        "Revision": getRevision(rule),
+        "Published": rule.attributes && rule.attributes.published ? "Yes" : "No",
+        "Enabled": rule.attributes && rule.attributes.enabled ? "Yes" : "No",
+        "Dirty": rule.attributes && rule.attributes.dirty ? "Yes" : "No",
+        "Created At": rule.attributes && rule.attributes.created_at ? rule.attributes.created_at : "",
+        "Updated At": rule.attributes && rule.attributes.updated_at ? rule.attributes.updated_at : "",
+        "Rule Components": buildComponentDescriptorSummary(components),
+        "Rule Component Count": components.length,
+        "Rule Component Values": truncateExcelText(buildRuleComponentValues(components)),
+        "Rule Settings": stringifyForExcel(safeJsonParse(rule.attributes && rule.attributes.settings)),
+        "Raw Attributes": stringifyForExcel(rule.attributes || {})
+      };
+    });
   };
 
   const buildDataElementsSheetRows = (dataElements) => {
@@ -662,7 +707,7 @@ const AppController = (function() {
     }
 
     const workbook = XLSX.utils.book_new();
-    const ruleComponentRows = buildRuleComponentsSheetRows(latestResults.rules);
+    const ruleComponentCount = countRuleComponents(latestResults.rules);
 
     addSheet(workbook, "Summary", [{
       "Exported At": new Date().toISOString(),
@@ -670,12 +715,11 @@ const AppController = (function() {
       "Property": document.getElementById('propertySelect')?.selectedOptions[0]?.text || "",
       "Search Keyword": latestResults.searchKeyword || "",
       "Rules Count": latestResults.rules.length,
-      "Rule Components Count": ruleComponentRows.length,
+      "Rule Components Count": ruleComponentCount,
       "Data Elements Count": latestResults.dataElements.length,
       "Extensions Count": latestResults.extensions.length
     }]);
     addSheet(workbook, "Rules", buildRulesSheetRows(latestResults.rules));
-    addSheet(workbook, "Rule Components", ruleComponentRows);
     addSheet(workbook, "Data Elements", buildDataElementsSheetRows(latestResults.dataElements));
     addSheet(workbook, "Extensions", buildExtensionsSheetRows(latestResults.extensions));
 

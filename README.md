@@ -103,9 +103,9 @@ Examples:
 
 7) Exporting configuration
 
-- Use the **Export** control to download configuration data for the selected Property (JSON format).
-- Exported package may include Rules, Data Elements, Extensions, and Publish History depending on selection.
-- Note: Export is labeled beta — verify exported JSON before importing elsewhere.
+- Use the **Download Excel** control after **Get Details** to download configuration data for the selected Property.
+- The workbook includes a Rules sheet with one row per rule, including that rule's components and component values, plus Data Elements and Extensions sheets.
+- Note: Export is labeled beta — verify exported data before using it elsewhere.
 
 8) Troubleshooting & tips
 
