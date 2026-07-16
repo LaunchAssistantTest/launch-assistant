@@ -10,9 +10,10 @@ Getting started
 4. Commit and push, then open a pull request.
 
 Guidelines
-- No build tools required; keep changes small and focused.
-- Use plain JavaScript and minimal dependencies.
+- No build tools required to run the app; keep changes small and focused.
+- Use plain JavaScript (ES modules under `js/`) and minimal dependencies.
 - Add comments for complex logic and include any manual test steps in your PR.
+- Pure logic changes (excel.js, ui.js, api.js) should come with a Vitest test in `tests/`. Run with `npm install && npm test`.
 
 Reporting issues
 - Open an issue with a clear title, steps to reproduce, and browser/version details.

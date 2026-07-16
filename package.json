@@ -1,0 +1,12 @@
+{
+  "name": "launch-assistant",
+  "private": true,
+  "type": "module",
+  "description": "Client-side Adobe Launch (Tags) property browser and exporter. No build step needed to run the app — open index.html directly. This package.json exists only for the optional test suite.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}

@@ -11,18 +11,24 @@ directly from the Adobe Reactor API.
 
 - Company & property browser — switch between companies and properties
 - Rule search and filter with live highlighting
+- Code formatting for rule components (JavaScript/JSON)
+- Excel export of Rules, Data Elements, and Extensions (beta)
+
+Planned, not yet implemented (the Extension Filter, Publish History, and
+Relationships tabs currently exist as empty placeholders in the UI):
+
 - Extension filter and usage view
 - Publish history inspection for rules
 - Relationship viewer for data elements and extensions
-- Code formatting for rule components (JavaScript/JSON)
-- Export tools (beta)
 
 ## Quick Start
 
 Prerequisites
 
 - A modern browser (Chrome, Firefox, Safari, Edge) with JavaScript enabled
-- An Adobe Launch account and API credentials (Access Token, Org ID, Client ID, Client Secret)
+- An Adobe Launch Access Token, generated via [Adobe Developer Console](https://developer.adobe.com/console)'s
+  Server-to-Server credential for this org (Org ID and Client ID are already
+  built into the app — see Configuration below)
 
 Run locally
 
@@ -45,18 +51,25 @@ npx http-server -p 8000
 
 ## Configuration
 
-1. Open Launch Assistant in the browser
-2. Open the **Configuration** section
-3. Paste your Adobe Launch API credentials:
-   - Access Token
-   - Org ID
-   - Client ID
-   - Client Secret
-4. Click **Update Settings**
+1. In [Adobe Developer Console](https://developer.adobe.com/console), open this
+   app's project → the **OAuth Server-to-Server** credential → click
+   **Generate access token** and copy it.
+2. Open Launch Assistant in the browser and open the **Configuration** section.
+3. Paste the token into **Access Token** and click **Update Settings**.
+
+Org ID and Client ID are fixed for this deployment (they identify this app's
+Developer Console project, not you personally) and are baked in — see
+`js/config.js` if you fork this app under a different Adobe org/project.
 
 Credentials are stored in browser session storage and cleared when the tab is closed.
 
 Security note: credentials are used only for direct requests from your browser to Adobe's API. Do not commit or share secrets.
+
+> Note: Adobe Developer Console also offers an "Admin Authentication" (OAuth,
+> 3-legged) credential type that would let users sign in with their own Adobe
+> ID directly in the browser instead of pasting a token. That type requires
+> an Adobe license this org doesn't currently have — worth revisiting if that
+> license is ever added.
 
 ## Usage
 
@@ -70,25 +83,23 @@ Follow these steps to configure, explore, and export data with Launch Assistant.
 2) Configure API credentials
 
 - Open the **Configuration** panel in the UI.
-- Paste your Adobe Launch API credentials (Access Token, Org ID, Client ID, Client Secret).
-- Click **Update Settings**. Credentials are stored in session storage for the current tab.
+- Paste your Access Token (see Configuration above for how to generate one) and click **Update Settings**.
+- The token is stored in session storage for the current tab.
 
 Tip: If you see authentication errors, confirm the token has the required scopes and has not expired.
 
 3) Select Company & Property
 
 - Use the Company dropdown to pick the organization. Launch Assistant will load available Properties.
-- Choose a Property to load its Rules, Data Elements, Extensions, and Publish History.
+- Choose a Property, then click **Get Details** to load its Rules, Data Elements, and Extensions.
 
 4) Searching and filtering
 
-- Use the **Search** tab to find rules by name, description, or code. Search supports simple keywords and partial matches.
-- Use the **Extension Filter** to restrict results to rules that reference a specific extension.
-- Combine filters (search term + extension + property) to narrow results.
+- Use the **Search** tab to find rules by name before clicking **Get Details** to narrow what's fetched.
+- After details are loaded, typing a term live-highlights matches across rule names, settings, and components.
 
 Examples:
 - Search: `checkout`, `utm`, `setCookie`
-- Extension filter: select `Adobe Analytics` to show rules that use that extension
 
 5) Inspecting a rule
 
@@ -96,29 +107,17 @@ Examples:
 - The detail view shows rule metadata, conditions, actions, and code components (formatted as JavaScript/JSON).
 - Expand components to view full source and any referenced Data Elements or Extensions.
 
-6) Relationship Viewer
-
-- Open the Relationship Viewer to see connections between Data Elements, Rules, and Extensions.
-- Use this to find where a given Data Element is used across rules and extensions.
-
-7) Exporting configuration
+6) Exporting configuration
 
 - Use the **Download Excel** control after **Get Details** to download configuration data for the selected Property.
 - The workbook includes a Rules sheet with one row per rule, including that rule's components and component values, plus Data Elements and Extensions sheets.
 - Note: Export is labeled beta — verify exported data before using it elsewhere.
 
-8) Troubleshooting & tips
+7) Troubleshooting & tips
 
 - If lists are empty or requests fail, check browser console (F12) for network errors.
 - CORS: prefer serving the files with a local server to avoid cross-origin issues.
 - Session storage is cleared on tab close — save exported credentials or JSON before closing the tab.
-
-9) Example workflows
-
-- Audit: select a Property, filter by extension, review rules and export a JSON snapshot for offline review.
-- Impact analysis: search for a Data Element, open Relationship Viewer, and identify all rules that use it.
-
-If you'd like, I can also add screenshots or short GIFs to illustrate the UI flows.
 
 ## Troubleshooting
 
@@ -137,19 +136,38 @@ If you'd like, I can also add screenshots or short GIFs to illustrate the UI flo
 - Credentials are stored only in session storage and not transmitted to third parties
 - All API requests are made directly to `https://reactor.adobe.io`
 
+## Testing
+
+Pure logic (Excel export data-shaping, search highlighting/escaping, the
+request concurrency helper) has a Vitest suite. It's optional — the app
+itself still needs no build step and no `npm install` to run in a browser.
+
+```bash
+npm install
+npm test
+```
+
 ## Contributing
 
-See `CONTRIBUTING.md` for contribution guidelines. No build tools are required — edit files and refresh the browser.
+See `CONTRIBUTING.md` for contribution guidelines. No build tools are required to run the app — edit files and refresh the browser.
 
 ## Project Structure
 
 ```
 launch-assistant/
 ├── index.html        # Main UI
-├── app.js            # Application logic and API integration
-├── style.css         # Styling
-├── README.md         # This file
-└── CONTRIBUTING.md   # Contribution guide
+├── js/
+│   ├── app.js         # Event wiring / controller
+│   ├── config.js      # Credential storage (ConfigManager)
+│   ├── api.js          # Adobe Reactor API client (APIService)
+│   ├── ui.js            # DOM/rendering utilities (UIUtils)
+│   ├── render.js        # Rules/Data Elements/Extensions rendering
+│   └── excel.js          # Excel export (workbook building)
+├── tests/             # Vitest unit tests for the modules above
+├── style.css          # Styling
+├── package.json        # Dev-only: test tooling (not needed to run the app)
+├── README.md           # This file
+└── CONTRIBUTING.md      # Contribution guide
 ```
 
 ## License
